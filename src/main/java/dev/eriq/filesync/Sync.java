@@ -137,6 +137,9 @@ public class Sync {
             // Upload the dirent.
             this.dest.put(tempPath, direntRelpath);
 
+            // Remove the temp path.
+            Util.removeDirent(tempPath);
+
             // If this is a dir, put it on the fringe for later syncing.
             if (dirent.isDir()) {
                 fringe.add(direntRelpath);
