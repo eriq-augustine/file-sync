@@ -1,5 +1,7 @@
 package dev.eriq.filesync.location;
 
+import dev.eriq.filesync.location.LocalLocation;
+
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
@@ -22,6 +24,14 @@ public abstract class Location implements AutoCloseable {
 
     public Location(String baseDir) {
         this.baseDir = baseDir;
+    }
+
+    /**
+     * Create a location from a string using specific conventions for this project.
+     */
+    public static Location fromString(String text) {
+        // If there are no additional markings, then it must be the path for a local location.
+        return new LocalLocation(Path.of(text));
     }
 
     /**
