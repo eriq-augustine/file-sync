@@ -113,36 +113,57 @@ public class Sync {
      * Any discovered directories will be placed into the fringe.
      */
     private void syncDir(String relpath, Queue<String> fringe) throws IOException {
+        // Build a map of dirents currently in the dest dir.
         // {name: info, ...}.
         Map<String, Location.DirentInfo> destDirents = new HashMap<String, Location.DirentInfo>();
-        for (Location.DirentInfo dirent : this.dest.list(relpath)) {
+        for (Location.DirentInfo dirent : this.dest.listDir(relpath)) {
             destDirents.put(dirent.getName(), dirent);
         }
 
-        for (Location.DirentInfo dirent : this.source.list(relpath)) {
-            String direntRelpath = this.source.join(relpath, dirent.getName());
+        for (Location.DirentInfo dirent : this.source.listDir(relpath)) {
+            String direntRelpath = this.source.joinPath(relpath, dirent.getName());
 
             // Check for and handle any conflicts.
-            if (destDirents.containsKey(dirent.getName()) && this.isConflict(dirent, destDirents.get(dirent.getName()))) {
-                if (this.conflictBehavior == ConflictBehavior.SKIP) {
-                    continue;
+            if (destDirents.containsKey(dirent.getName())) {
+                // Check for a true conflict.
+                if (this.isConflict(dirent, destDirents.get(dirent.getName()))) {
+                    // This is a conflict, decide what to do.
+                    if (this.conflictBehavior == ConflictBehavior.SKIP) {
+                        continue;
+                    }
                 }
+
+                // There is a dirent with the same name, and we are not skipping.
+                // It must be removed in the dest.
+                this.dest.removeDirent(direntRelpath, destDirents.get(dirent.getName()));
             }
 
-            Path tempPath = Paths.get(System.getProperty("java.io.tmpdir"), UUID.randomUUID().toString());
+            switch (dirent.getType()) {
+                case DIR:
+                    this.dest.makeDir(direntRelpath);
 
-            // Download the dirent.
-            this.source.fetch(direntRelpath, tempPath);
+                    // Add dirs to the fringe.
+                    fringe.add(direntRelpath);
 
-            // Upload the dirent.
-            this.dest.put(tempPath, direntRelpath);
+                    break;
+                case FILE:
+                    Path tempPath = Paths.get(System.getProperty("java.io.tmpdir"), UUID.randomUUID().toString());
 
-            // Remove the temp path.
-            Util.removeDirent(tempPath);
+                    try {
+                        // Download the dirent.
+                        this.source.fetchFile(direntRelpath, tempPath);
 
-            // If this is a dir, put it on the fringe for later syncing.
-            if (dirent.isDir()) {
-                fringe.add(direntRelpath);
+                        // Upload the dirent.
+                        this.dest.putFile(tempPath, direntRelpath);
+                    } finally {
+                        // Remove the temp path.
+                        Util.removeDirent(tempPath);
+                    }
+
+                    break;
+                case SYMLINK:
+                    this.dest.createLink(direntRelpath, this.source.readLink(direntRelpath));
+                    break;
             }
         }
     }

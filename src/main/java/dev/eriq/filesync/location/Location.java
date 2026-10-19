@@ -12,9 +12,15 @@ import java.util.List;
  *
  * A location can be on this current machine (local) or on a different machine (remote).
  *
- * Locations support very simple operations (fetch/read and put/write) on their dirents.
+ * Locations support very simple operations on their dirents.
+ * Operations identify files within the location using a relative path (relative to the location's base dir),
+ * and identify files on this local machine (usually referred to as "temp files") with a java.nio.file.Path.
+ *
  * All IO operations are NOT recursive,
  * callers are responsible for handling recursive dirent operations.
+ *
+ * Operations are meant to be very targeted and generally do one thing.
+ * This means that, for example, write operations expect the target path for a write to not exist before a write begins.
  */
 public abstract class Location implements AutoCloseable {
     /**
@@ -50,35 +56,92 @@ public abstract class Location implements AutoCloseable {
     public abstract void close() throws Exception;
 
     /**
-     * Fetch a dirent (identified by the relative path),
-     * and place it at the given temp path.
-     * The temp path should not exist before the call.
-     */
-    public abstract void fetch(String relpath, Path tempPath) throws IOException;
-
-    /**
-     * Put a dirent (identified by the temp path),
-     * and place it at the given relative path within this location.
-     * Any existing dirent at the relative path should be deleted.
-     * The temp path must exist before the call.
-     */
-    public abstract void put(Path tempPath, String relpath) throws IOException;
-
-    /**
-     * List a directory (identified by the relative path).
-     */
-    public abstract List<DirentInfo> list(String relpath) throws IOException;
-
-    /**
      * Join two elements of a relative path together for this location.
      * Locations must guarantee that using this with the argument to list() and the resulting dirent names should resolve to valid relative paths.
      */
-    public abstract String join(String a, String b);
+    public abstract String joinPath(String a, String b);
+
+    /**
+     * List a directory.
+     */
+    public abstract List<DirentInfo> listDir(String relpath) throws IOException;
+
+    /**
+     * Make a directory.
+     * Parent non-existent directories are not created.
+     */
+    public abstract void makeDir(String relpath) throws IOException;
+
+    /**
+     * Remove an empty directory.
+     */
+    public abstract void removeDir(String relpath) throws IOException;
+
+    /**
+     * Fetch a file from this location and place it at the given temp path.
+     */
+    public abstract void fetchFile(String relpath, Path tempPath) throws IOException;
+
+    /**
+     * Put a file into this location.
+     */
+    public abstract void putFile(Path tempPath, String relpath) throws IOException;
+
+    /**
+     * Remove a file.
+     */
+    public abstract void removeFile(String relpath) throws IOException;
+
+    /**
+     * Read the target of a link.
+     */
+    public abstract String readLink(String relpath) throws IOException;
+
+    /**
+     * Create a link with the given target.
+     */
+    public abstract void createLink(String relpath, String target) throws IOException;
+
+    /**
+     * Remove a link.
+     */
+    public abstract void removeLink(String relpath) throws IOException;
+
+    /**
+     * Convenience method that calls the correct method for the dirent type.
+     */
+    public void removeDirent(String relpath, DirentInfo direntInfo) throws IOException {
+        switch (direntInfo.getType()) {
+            case DIR:
+                this.removeDirRecursive(relpath);
+                break;
+            case FILE:
+                this.removeFile(relpath);
+                break;
+            case SYMLINK:
+                this.removeLink(relpath);
+                break;
+            default:
+                throw new IOException(String.format("Unknown file mode ('%s') when removing '%s'.", direntInfo.getType(), relpath));
+        }
+    }
+
+    /**
+     * A convenience function for remove a directory and all its contents.
+     */
+    public void removeDirRecursive(String relpath) throws IOException {
+        for (DirentInfo dirent : this.listDir(relpath)) {
+            this.removeDirent(this.joinPath(relpath, dirent.getName()), dirent);
+        }
+
+        this.removeDir(relpath);
+    }
 
     /**
      * A simple base representation of information about a dirent.
+     * Location implementations may override this to provide lazy access to attributes that may have a non-trivial cost to find.
      */
-    public abstract static class DirentInfo {
+    public static class DirentInfo {
         public enum Type {
             DIR,
             FILE,
@@ -88,10 +151,14 @@ public abstract class Location implements AutoCloseable {
 
         protected String name;
         protected Type type;
+        protected long size;
+        protected long modTimeMS;
 
-        public DirentInfo(String name, Type type) {
+        public DirentInfo(String name, Type type, long size, long modTimeMS) {
             this.name = name;
             this.type = type;
+            this.size = size;
+            this.modTimeMS = modTimeMS;
         }
 
         public String getName() {
@@ -100,6 +167,14 @@ public abstract class Location implements AutoCloseable {
 
         public Type getType() {
             return this.type;
+        }
+
+        public long getSize() {
+            return this.size;
+        }
+
+        public long getModTime() {
+            return this.modTimeMS;
         }
 
         public boolean equals(Object object) {
@@ -112,23 +187,11 @@ public abstract class Location implements AutoCloseable {
             }
 
             DirentInfo other = (DirentInfo)object;
-            return (this.type == other.type) && (this.name.equals(other.name));
+            return ((this.type == other.type) && (this.name.equals(other.name)) && (this.size == other.size) && (this.modTimeMS == other.modTimeMS));
         }
 
         public boolean isDir() {
             return (this.type == Type.DIR);
         }
-
-        /**
-         * Get the dirent size in bytes.
-         * This number should only be seriously used for files.
-         * Other types may return reasonable values, but they should not be relied on.
-         */
-        public abstract long getSize();
-
-        /**
-         * Get the modification time as the number of milliseconds since the UNIX epoch.
-         */
-        public abstract long getModTime();
     }
 }

@@ -389,6 +389,24 @@ public class SyncTest {
                 List.of(
                     (new TestFile("a.txt", "abc")).setModTime(123)
                 )
+            ),
+
+            // Conflict with recursive target.
+            new SyncConflictTestCase(
+                new LocalLocation(sourceTempDir),
+                new LocalLocation(destTempDir),
+                EnumSet.noneOf(Sync.IdentityCheck.class),
+                Sync.ConflictBehavior.OVERWRITE,
+                List.of(
+                    new TestFile("a.txt", "abc")
+                ),
+                List.of(
+                    new TestDir("a.txt"),
+                    new TestDir("a.txt/b.txt")
+                ),
+                List.of(
+                    new TestFile("a.txt", "abc")
+                )
             )
         );
 
