@@ -23,10 +23,10 @@ public class LocalLocation extends Location {
     }
 
     public void open() throws Exception {
-        Path basePath = Paths.get(this.baseDir);
+        Path basePath = Path.of(this.baseDir);
 
         if (!Util.exists(basePath)) {
-            throw new FileNotFoundException(String.format("Could not location base directory for local location: '%s'.", basePath.toString()));
+            Files.createDirectories(basePath);
         }
 
         if (!Util.isDir(basePath)) {
