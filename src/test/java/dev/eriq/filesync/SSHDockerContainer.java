@@ -17,66 +17,41 @@ public class SSHDockerContainer {
 
     public static final String MOUNT_DIR = "/work";
 
-    public static final int NICE_WAIT_MSEC = 200;
-    public static final int FORCE_WAIT_MSEC = 500;
+    public static final long NICE_WAIT_MSEC = 200;
+    public static final long FORCE_WAIT_MSEC = 500;
 
     public static final int STARTUP_WAIT_MSEC = 750;
 
+    private static Boolean isAvailable = null;
     private static List<SSHDockerContainer> containers = new ArrayList<SSHDockerContainer>();
 
     private SSHLocation location;
     private Path mountDir;
 
-    private Process process;
+    private Process containerProcess;
 
     public SSHDockerContainer(SSHLocation location, Path mountDir) {
         this.location = location;
         this.mountDir = mountDir;
 
-        process = null;
+        containerProcess = null;
 
         containers.add(this);
     }
 
     public void stop() {
-        if (this.process == null) {
+        if (this.containerProcess == null) {
             return;
         }
 
         System.out.println(String.format("Stopping test SSH Docker container: '%s:%d'.", location.getHostname(), location.getPort()));
 
-        Process process = this.process;
-        this.process = null;
-
-        // Try to stop the process nicely.
-        try {
-            process.destroy();
-            if (process.waitFor(NICE_WAIT_MSEC, TimeUnit.MILLISECONDS)) {
-                return;
-            }
-        } catch (InterruptedException ex) {
-            // Ignore
-        }
-
-        // Stop the process foricly.
-        try {
-            process.destroyForcibly();
-            process.waitFor(FORCE_WAIT_MSEC, TimeUnit.MILLISECONDS);
-        } catch (InterruptedException ex) {
-            // Ignore
-        }
-    }
-
-    public static void stopAll() {
-        for (SSHDockerContainer container : containers) {
-            if (container != null) {
-                container.stop();
-            }
-        }
+        terminateProcess(containerProcess, NICE_WAIT_MSEC, FORCE_WAIT_MSEC);
+        containerProcess = null;
     }
 
     public void start() throws IOException {
-        if (process != null) {
+        if (containerProcess != null) {
             throw new RuntimeException("Container already started.");
         }
 
@@ -100,16 +75,77 @@ public class SSHDockerContainer {
         );
 
         ProcessBuilder builder = new ProcessBuilder(command);
-
         builder.redirectOutput(ProcessBuilder.Redirect.DISCARD);
         builder.redirectError(ProcessBuilder.Redirect.DISCARD);
 
-        process = builder.start();
+        containerProcess = builder.start();
 
         try {
             Thread.sleep(STARTUP_WAIT_MSEC);
         } catch (InterruptedException ex) {
             // Ignore
         }
+    }
+
+    public static void stopAll() {
+        for (SSHDockerContainer container : containers) {
+            if (container != null) {
+                container.stop();
+            }
+        }
+    }
+
+    public static int terminateProcess(Process process, long niceTimeoutMS, long forceTimeoutMS) {
+        if (process == null) {
+            return -1;
+        }
+
+        // Try to stop the process nicely.
+        try {
+            process.destroy();
+            if (process.waitFor(niceTimeoutMS, TimeUnit.MILLISECONDS)) {
+                return process.exitValue();
+            }
+        } catch (InterruptedException ex) {
+            // Ignore
+        }
+
+        // Stop the process foricly.
+        try {
+            process.destroyForcibly();
+            process.waitFor(forceTimeoutMS, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException ex) {
+            // Ignore
+        }
+
+        return process.exitValue();
+    }
+
+    public static boolean isAvailable() {
+        if (isAvailable == null) {
+            isAvailable = Boolean.valueOf(checkIsAvailable());
+        }
+
+        return isAvailable.booleanValue();
+    }
+
+    private static boolean checkIsAvailable() {
+        ProcessBuilder builder = new ProcessBuilder("docker", "ps");
+        builder.redirectOutput(ProcessBuilder.Redirect.DISCARD);
+        builder.redirectError(ProcessBuilder.Redirect.DISCARD);
+
+        Process process = null;
+        int exitCode = -1;
+        try {
+            process = builder.start();
+            process.waitFor(100, TimeUnit.MILLISECONDS);
+            exitCode = process.exitValue();
+        } catch (IOException | IllegalThreadStateException | InterruptedException ex) {
+            return false;
+        } finally {
+            terminateProcess(process, 10, 10);
+        }
+
+        return (exitCode == 0);
     }
 }

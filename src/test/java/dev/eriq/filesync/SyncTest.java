@@ -9,8 +9,10 @@ import dev.eriq.filesync.location.SSHLocation;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.opentest4j.TestAbortedException;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -51,6 +53,8 @@ public class SyncTest {
 
     private class SSHLocationFactory implements LocationFactory {
         public Location create(Path baseDir) throws IOException {
+            Assumptions.assumeTrue(SSHDockerContainer.isAvailable(), "Docker is not available");
+
             int port = Util.findAvailablePort();
 
             // Make a new location that points to the mounted directory and available port.
@@ -74,8 +78,6 @@ public class SyncTest {
 
     @Test
     public void testSyncSimpleBaseSSH() throws Exception {
-        // TEST - Skip if no Docker.
-
         testSyncSimpleBase(new SSHLocationFactory(), new SSHLocationFactory());
     }
 
@@ -152,6 +154,9 @@ public class SyncTest {
 
                 // Ensure the final output matches the specification.
                 matchTestDir(finalOutputDir, dirents);
+            } catch (TestAbortedException ex) {
+                // Ignore
+                System.out.println(String.format("Skipped test case %d: '%s'.", i, ex.getMessage()));
             } catch (AssertionError ex) {
                 throw new AssertionError(String.format("Failed test case %d.", i), ex);
             } catch (Exception ex) {
