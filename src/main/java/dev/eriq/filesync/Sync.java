@@ -90,7 +90,7 @@ public class Sync {
             source.open();
             dest.open();
 
-            this.syncFull();
+            syncFull();
         } finally {
             source.close();
             dest.close();
@@ -104,7 +104,7 @@ public class Sync {
 
         // Sync each directory until the fringe is empty.
         while (!fringe.isEmpty()) {
-            this.syncDir(fringe.remove(), fringe);
+            syncDir(fringe.remove(), fringe);
         }
     }
 
@@ -116,31 +116,31 @@ public class Sync {
         // Build a map of dirents currently in the dest dir.
         // {name: info, ...}.
         Map<String, Location.DirentInfo> destDirents = new HashMap<String, Location.DirentInfo>();
-        for (Location.DirentInfo dirent : this.dest.listDir(relpath)) {
+        for (Location.DirentInfo dirent : dest.listDir(relpath)) {
             destDirents.put(dirent.getName(), dirent);
         }
 
-        for (Location.DirentInfo dirent : this.source.listDir(relpath)) {
-            String direntRelpath = this.source.joinPath(relpath, dirent.getName());
+        for (Location.DirentInfo dirent : source.listDir(relpath)) {
+            String direntRelpath = source.joinPath(relpath, dirent.getName());
 
             // Check for and handle any conflicts.
             if (destDirents.containsKey(dirent.getName())) {
                 // Check for a true conflict.
-                if (this.isConflict(dirent, destDirents.get(dirent.getName()))) {
+                if (isConflict(dirent, destDirents.get(dirent.getName()))) {
                     // This is a conflict, decide what to do.
-                    if (this.conflictBehavior == ConflictBehavior.SKIP) {
+                    if (conflictBehavior == ConflictBehavior.SKIP) {
                         continue;
                     }
                 }
 
                 // There is a dirent with the same name, and we are not skipping.
                 // It must be removed in the dest.
-                this.dest.removeDirent(direntRelpath, destDirents.get(dirent.getName()));
+                dest.removeDirent(direntRelpath, destDirents.get(dirent.getName()));
             }
 
             switch (dirent.getType()) {
                 case DIR:
-                    this.dest.makeDir(direntRelpath);
+                    dest.makeDir(direntRelpath);
 
                     // Add dirs to the fringe.
                     fringe.add(direntRelpath);
@@ -151,10 +151,10 @@ public class Sync {
 
                     try {
                         // Download the dirent.
-                        this.source.fetchFile(direntRelpath, tempPath);
+                        source.fetchFile(direntRelpath, tempPath);
 
                         // Upload the dirent.
-                        this.dest.putFile(tempPath, direntRelpath);
+                        dest.putFile(tempPath, direntRelpath);
                     } finally {
                         // Remove the temp path.
                         Util.removeDirent(tempPath);
@@ -162,7 +162,7 @@ public class Sync {
 
                     break;
                 case SYMLINK:
-                    this.dest.createLink(direntRelpath, this.source.readLink(direntRelpath));
+                    dest.createLink(direntRelpath, source.readLink(direntRelpath));
                     break;
             }
         }
@@ -173,11 +173,11 @@ public class Sync {
             return false;
         }
 
-        if (this.identityChecks.contains(IdentityCheck.SIZE) && (a.getSize() != b.getSize())) {
+        if (identityChecks.contains(IdentityCheck.SIZE) && (a.getSize() != b.getSize())) {
             return false;
         }
 
-        if (this.identityChecks.contains(IdentityCheck.MODTIME) && (a.getModTime() != b.getModTime())) {
+        if (identityChecks.contains(IdentityCheck.MODTIME) && (a.getModTime() != b.getModTime())) {
             return false;
         }
 

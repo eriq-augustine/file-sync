@@ -23,7 +23,7 @@ public class LocalLocation extends Location {
     }
 
     public void open() throws Exception {
-        Path basePath = Path.of(this.baseDir);
+        Path basePath = Path.of(baseDir);
 
         if (!Util.exists(basePath)) {
             Files.createDirectories(basePath);
@@ -42,7 +42,7 @@ public class LocalLocation extends Location {
     }
 
     public List<Location.DirentInfo> listDir(String relpath) throws IOException {
-        Path path = Paths.get(this.baseDir, relpath).toAbsolutePath();
+        Path path = Paths.get(baseDir, relpath).toAbsolutePath();
 
         List<Location.DirentInfo> dirents = new ArrayList<Location.DirentInfo>();
         for (File dirent : path.toFile().listFiles()) {
@@ -62,35 +62,35 @@ public class LocalLocation extends Location {
     }
 
     public void makeDir(String relpath) throws IOException {
-        Files.createDirectory(Paths.get(this.baseDir, relpath));
+        Files.createDirectory(Paths.get(baseDir, relpath));
     }
 
     public void removeDir(String relpath) throws IOException {
-        Files.delete(Paths.get(this.baseDir, relpath));
+        Files.delete(Paths.get(baseDir, relpath));
     }
 
     public void fetchFile(String relpath, Path tempPath) throws IOException {
-        this.copy(Paths.get(this.baseDir, relpath), tempPath);
+        copy(Paths.get(baseDir, relpath), tempPath);
     }
 
     public void putFile(Path tempPath, String relpath) throws IOException {
-        this.copy(tempPath, Paths.get(this.baseDir, relpath));
+        copy(tempPath, Paths.get(baseDir, relpath));
     }
 
     public void removeFile(String relpath) throws IOException {
-        Files.delete(Paths.get(this.baseDir, relpath));
+        Files.delete(Paths.get(baseDir, relpath));
     }
 
     public String readLink(String relpath) throws IOException {
-        return Files.readSymbolicLink(Paths.get(this.baseDir, relpath)).toString();
+        return Files.readSymbolicLink(Paths.get(baseDir, relpath)).toString();
     }
 
     public void createLink(String relpath, String target) throws IOException {
-        Files.createSymbolicLink(Paths.get(this.baseDir, relpath), Path.of(target));
+        Files.createSymbolicLink(Paths.get(baseDir, relpath), Path.of(target));
     }
 
     public void removeLink(String relpath) throws IOException {
-        Files.delete(Paths.get(this.baseDir, relpath));
+        Files.delete(Paths.get(baseDir, relpath));
     }
 
     private void copy(Path source, Path dest) throws IOException {

@@ -1,6 +1,7 @@
 package dev.eriq.filesync.location;
 
 import dev.eriq.filesync.location.LocalLocation;
+import dev.eriq.filesync.location.SSHLocation;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -34,10 +35,28 @@ public abstract class Location implements AutoCloseable {
 
     /**
      * Create a location from a string using specific conventions for this project.
+     *
+     * SSH Location: `ssh::<user>:<password>@<host>[:port][::<path>]`
+     * Local Location: `local::<path>`
+     * Additionally, if a string has no initial marking, then it is considered a local location.
      */
     public static Location fromString(String text) {
-        // If there are no additional markings, then it must be the path for a local location.
-        return new LocalLocation(Path.of(text));
+        String[] parts = text.trim().split("::", 2);
+
+        // No initial marking was provided.
+        if (parts.length == 1) {
+            return new LocalLocation(Path.of(text));
+        }
+
+        String type = parts[0].toLowerCase();
+        switch (type) {
+            case "local":
+                return new LocalLocation(Path.of(parts[1]));
+            case "ssh":
+                return SSHLocation.fromString(parts[1]);
+            default:
+                throw new IllegalArgumentException(String.format("Unknown location type ('%s') for: '%s'.", type, text));
+        }
     }
 
     /**
@@ -113,13 +132,13 @@ public abstract class Location implements AutoCloseable {
     public void removeDirent(String relpath, DirentInfo direntInfo) throws IOException {
         switch (direntInfo.getType()) {
             case DIR:
-                this.removeDirRecursive(relpath);
+                removeDirRecursive(relpath);
                 break;
             case FILE:
-                this.removeFile(relpath);
+                removeFile(relpath);
                 break;
             case SYMLINK:
-                this.removeLink(relpath);
+                removeLink(relpath);
                 break;
             default:
                 throw new IOException(String.format("Unknown file mode ('%s') when removing '%s'.", direntInfo.getType(), relpath));
@@ -130,11 +149,11 @@ public abstract class Location implements AutoCloseable {
      * A convenience function for remove a directory and all its contents.
      */
     public void removeDirRecursive(String relpath) throws IOException {
-        for (DirentInfo dirent : this.listDir(relpath)) {
-            this.removeDirent(this.joinPath(relpath, dirent.getName()), dirent);
+        for (DirentInfo dirent : listDir(relpath)) {
+            removeDirent(joinPath(relpath, dirent.getName()), dirent);
         }
 
-        this.removeDir(relpath);
+        removeDir(relpath);
     }
 
     /**
@@ -162,19 +181,19 @@ public abstract class Location implements AutoCloseable {
         }
 
         public String getName() {
-            return this.name;
+            return name;
         }
 
         public Type getType() {
-            return this.type;
+            return type;
         }
 
         public long getSize() {
-            return this.size;
+            return size;
         }
 
         public long getModTime() {
-            return this.modTimeMS;
+            return modTimeMS;
         }
 
         public boolean equals(Object object) {
@@ -187,11 +206,11 @@ public abstract class Location implements AutoCloseable {
             }
 
             DirentInfo other = (DirentInfo)object;
-            return ((this.type == other.type) && (this.name.equals(other.name)) && (this.size == other.size) && (this.modTimeMS == other.modTimeMS));
+            return ((type == other.type) && (name.equals(other.name)) && (size == other.size) && (modTimeMS == other.modTimeMS));
         }
 
         public boolean isDir() {
-            return (this.type == Type.DIR);
+            return (type == Type.DIR);
         }
     }
 }
