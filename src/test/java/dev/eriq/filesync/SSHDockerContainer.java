@@ -12,7 +12,6 @@ import java.util.concurrent.TimeUnit;
 public class SSHDockerContainer {
     public static final String CONTAINER_NAME = "filesync-ssh-test";
 
-    // TEST - Need a way for the test to fetch this image.
     public static final String IMAGE = "lscr.io/linuxserver/openssh-server:version-10.3_p1-r1";
 
     public static final String MOUNT_DIR = "/work";
@@ -21,6 +20,8 @@ public class SSHDockerContainer {
     public static final long FORCE_WAIT_MSEC = 500;
 
     public static final int STARTUP_WAIT_MSEC = 750;
+
+    public static final int PULL_WAIT_MSEC = 60 * 1000;
 
     private static Boolean isAvailable = null;
     private static List<SSHDockerContainer> containers = new ArrayList<SSHDockerContainer>();
@@ -121,9 +122,29 @@ public class SSHDockerContainer {
         return process.exitValue();
     }
 
+    public static boolean pullImage() {
+        ProcessBuilder builder = new ProcessBuilder("docker", "pull", IMAGE);
+        builder.redirectOutput(ProcessBuilder.Redirect.DISCARD);
+        builder.redirectError(ProcessBuilder.Redirect.DISCARD);
+
+        Process process = null;
+        int exitCode = -1;
+        try {
+            process = builder.start();
+            process.waitFor(PULL_WAIT_MSEC, TimeUnit.MILLISECONDS);
+            exitCode = process.exitValue();
+        } catch (IOException | IllegalThreadStateException | InterruptedException ex) {
+            return false;
+        } finally {
+            terminateProcess(process, 10, 10);
+        }
+
+        return (exitCode == 0);
+    }
+
     public static boolean isAvailable() {
         if (isAvailable == null) {
-            isAvailable = Boolean.valueOf(checkIsAvailable());
+            isAvailable = Boolean.valueOf(checkIsAvailable() && pullImage());
         }
 
         return isAvailable.booleanValue();
