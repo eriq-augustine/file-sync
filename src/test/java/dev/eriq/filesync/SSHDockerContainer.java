@@ -8,8 +8,11 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
 
 public class SSHDockerContainer {
+    private static final Logger logger = Logger.getLogger(SyncTest.class.getName());
+
     public static final String CONTAINER_NAME = "filesync-ssh-test";
 
     public static final String IMAGE = "lscr.io/linuxserver/openssh-server:version-10.3_p1-r1";
@@ -45,7 +48,7 @@ public class SSHDockerContainer {
             return;
         }
 
-        System.out.println(String.format("Stopping test SSH Docker container: '%s:%d'.", location.getHostname(), location.getPort()));
+        logger.info(String.format("Stopping test SSH Docker container: '%s:%d'.", location.getHostname(), location.getPort()));
 
         terminateProcess(containerProcess, NICE_WAIT_MSEC, FORCE_WAIT_MSEC);
         containerProcess = null;
@@ -56,7 +59,7 @@ public class SSHDockerContainer {
             throw new RuntimeException("Container already started.");
         }
 
-        System.out.println(String.format("Starting test SSH Docker container: '%s:%d'.", location.getHostname(), location.getPort()));
+        logger.info(String.format("Starting test SSH Docker container: '%s:%d'.", location.getHostname(), location.getPort()));
 
         UnixSystem system = new UnixSystem();
 

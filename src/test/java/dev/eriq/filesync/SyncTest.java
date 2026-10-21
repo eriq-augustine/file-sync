@@ -1,5 +1,6 @@
 package dev.eriq.filesync;
 
+import dev.eriq.filesync.Logging;
 import dev.eriq.filesync.TestDirent;
 import dev.eriq.filesync.SSHDockerContainer;
 import dev.eriq.filesync.Util;
@@ -10,6 +11,7 @@ import dev.eriq.filesync.location.SSHLocation;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.opentest4j.TestAbortedException;
@@ -24,6 +26,11 @@ import java.util.List;
 
 public class SyncTest {
     private static List<Path> tempDirs = new ArrayList<Path>();
+
+    @BeforeAll
+    public static void setUp() {
+        Logging.init();
+    }
 
     @AfterAll
     public static void tearDown() throws IOException {

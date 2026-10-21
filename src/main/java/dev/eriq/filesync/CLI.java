@@ -1,5 +1,6 @@
 package dev.eriq.filesync;
 
+import dev.eriq.filesync.Logging;
 import dev.eriq.filesync.Sync;
 import dev.eriq.filesync.location.Location;;
 
@@ -12,6 +13,8 @@ public class CLI {
     public static final Sync.ConflictBehavior DEFAULT_CONFLICT_BEHAVIOR = Sync.ConflictBehavior.SKIP;
 
     public static void main(String[] argv) throws Exception {
+        Logging.init();
+
         List<String> args = new ArrayList<String>();
         for (String arg : argv) {
             arg = arg.trim();
