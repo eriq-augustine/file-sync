@@ -1,6 +1,6 @@
 package dev.eriq.filesync;
 
-import dev.eriq.filesync.Util;
+import dev.eriq.filesync.util.DirentUtils;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -37,12 +37,12 @@ public abstract class TestDirent {
     public String match(Path baseDir) throws IOException {
         Path path = getPath(baseDir);
 
-        if (!Util.exists(path)) {
+        if (!DirentUtils.exists(path)) {
             return String.format("Dirent does not exist: '%s'.", relpath);
         }
 
-        if ((this instanceof File) && (modTimeMS != Util.getModTime(path))) {
-            return String.format("Mod time mismatch for '%s'. Expected: %d, Actual: %d.", relpath, modTimeMS, Util.getModTime(path));
+        if ((this instanceof File) && (modTimeMS != DirentUtils.getModTime(path))) {
+            return String.format("Mod time mismatch for '%s'. Expected: %d, Actual: %d.", relpath, modTimeMS, DirentUtils.getModTime(path));
         }
 
         String message = innerMatch(path);
@@ -81,7 +81,7 @@ public abstract class TestDirent {
         }
 
         public String innerMatch(Path path) throws IOException {
-            if (!Util.isFile(path)) {
+            if (!DirentUtils.isFile(path)) {
                 return String.format("Dirent is not a file: '%s'.", relpath);
             }
 
@@ -104,7 +104,7 @@ public abstract class TestDirent {
         }
 
         public String innerMatch(Path path) throws IOException {
-            if (!Util.isDir(path)) {
+            if (!DirentUtils.isDir(path)) {
                 return String.format("Dirent is not a dir: '%s'.", relpath);
             }
 
@@ -127,7 +127,7 @@ public abstract class TestDirent {
         }
 
         public String innerMatch(Path path) throws IOException {
-            if (!Util.isLink(path)) {
+            if (!DirentUtils.isLink(path)) {
                 return String.format("Dirent is not a link: '%s'.", relpath);
             }
 

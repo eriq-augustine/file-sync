@@ -1,6 +1,7 @@
 package dev.eriq.filesync;
 
 import dev.eriq.filesync.location.Location;
+import dev.eriq.filesync.util.DirentUtils;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -157,7 +158,7 @@ public class Sync {
                         dest.putFile(tempPath, direntRelpath);
                     } finally {
                         // Remove the temp path.
-                        Util.removeDirent(tempPath);
+                        DirentUtils.removeDirent(tempPath);
                     }
 
                     break;

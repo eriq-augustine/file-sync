@@ -3,10 +3,11 @@ package dev.eriq.filesync;
 import dev.eriq.filesync.Logging;
 import dev.eriq.filesync.TestDirent;
 import dev.eriq.filesync.SSHDockerContainer;
-import dev.eriq.filesync.Util;
 import dev.eriq.filesync.location.LocalLocation;
 import dev.eriq.filesync.location.Location;
 import dev.eriq.filesync.location.SSHLocation;
+import dev.eriq.filesync.util.DirentUtils;
+import dev.eriq.filesync.util.NetUtils;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
@@ -20,13 +21,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileAttribute;
-import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 
 public class SyncTest {
-    private static List<Path> tempDirs = new ArrayList<Path>();
-
     @BeforeAll
     public static void setUp() {
         Logging.init();
@@ -35,17 +33,7 @@ public class SyncTest {
     @AfterAll
     public static void tearDown() throws IOException {
         SSHDockerContainer.stopAll();
-
-        for (Path tempDir : tempDirs) {
-            Util.removeDirent(tempDir);
-        }
-        tempDirs.clear();
-    }
-
-    private Path getTempDir(String name) throws IOException {
-        Path tempDir = Files.createTempDirectory("filesync-test-" + name + "-");
-        tempDirs.add(tempDir);
-        return tempDir;
+        DirentUtils.removeTempDirs();
     }
 
     private interface LocationFactory {
@@ -62,12 +50,13 @@ public class SyncTest {
         public Location create(Path baseDir) throws IOException {
             Assumptions.assumeTrue(SSHDockerContainer.isAvailable(), "Docker is not available");
 
-            int port = Util.findAvailablePort();
+            int port = NetUtils.findAvailablePort();
 
             // Make a new location that points to the mounted directory and available port.
             SSHLocation location = new SSHLocation(
                     "localhost", port,
                     "testuser", "testpass",
+                    null, null,
                     SSHDockerContainer.MOUNT_DIR);
 
             // Create a new container and mount the base dir to it.
@@ -122,18 +111,18 @@ public class SyncTest {
             )
         );
 
-        Path stagingTempDir = getTempDir("staging");
-        Path finalOutputDir = getTempDir("output");
-        Path sourceLocationDir = getTempDir("source");
-        Path destLocationDir = getTempDir("dest");
+        Path stagingTempDir = DirentUtils.getTempDir("staging");
+        Path finalOutputDir = DirentUtils.getTempDir("output");
+        Path sourceLocationDir = DirentUtils.getTempDir("source");
+        Path destLocationDir = DirentUtils.getTempDir("dest");
 
         for (int i = 0; i < testCases.size(); i++) {
             List<TestDirent> dirents = testCases.get(i);
 
             try {
                 // Clear source and dest dirs.
-                Util.removeDirent(sourceLocationDir);
-                Util.removeDirent(destLocationDir);
+                DirentUtils.removeDirent(sourceLocationDir);
+                DirentUtils.removeDirent(destLocationDir);
                 Files.createDirectories(sourceLocationDir);
                 Files.createDirectories(destLocationDir);
 
@@ -141,7 +130,7 @@ public class SyncTest {
                 loadTestDir(stagingTempDir, dirents);
 
                 // Setup the final output dir.
-                Util.removeDirent(finalOutputDir);
+                DirentUtils.removeDirent(finalOutputDir);
                 Files.createDirectories(finalOutputDir);
 
                 Location source = sourceFactory.create(sourceLocationDir);
@@ -501,7 +490,7 @@ public class SyncTest {
     }
 
     private static void loadTestDir(Path tempDir, List<TestDirent> dirents) throws IOException {
-        Util.removeDirent(tempDir);
+        DirentUtils.removeDirent(tempDir);
         Files.createDirectories(tempDir);
 
         for (TestDirent dirent : dirents) {

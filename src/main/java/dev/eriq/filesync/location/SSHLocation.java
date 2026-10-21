@@ -1,7 +1,7 @@
 package dev.eriq.filesync.location;
 
-import dev.eriq.filesync.Util;
 import dev.eriq.filesync.location.Location;
+import dev.eriq.filesync.util.StringUtils;
 
 import net.schmizz.sshj.SSHClient;
 import net.schmizz.sshj.sftp.FileAttributes;
@@ -9,6 +9,7 @@ import net.schmizz.sshj.sftp.FileMode;
 import net.schmizz.sshj.sftp.SFTPClient;
 import net.schmizz.sshj.sftp.RemoteResourceInfo;
 import net.schmizz.sshj.transport.verification.PromiscuousVerifier;
+import net.schmizz.sshj.userauth.keyprovider.KeyProvider;
 import net.schmizz.sshj.xfer.FileSystemFile;
 
 import java.io.File;
@@ -38,27 +39,46 @@ public class SSHLocation extends Location {
     private int port;
     private String hostname;
     private String username;
+
     private String password;
+    private String privateKey;
+    private String publicKey;
 
     private SSHClient sshClient;
     private SFTPClient sftpClient;
 
-    // TEST - Auth
-    public SSHLocation(String hostname, int port, String username, String password, String baseDir) {
+    /**
+     * Create an SSHLocation.
+     *
+     * Either a password or (private and public keys) are required.
+     * Private keys should be in PKCS8 format, and public keys should in X.509.
+     */
+    public SSHLocation(String hostname, int port, String username, String password, String privateKey, String publicKey, String baseDir) {
         super(baseDir);
+
+        username = StringUtils.nullEmptyString(username);
+        if (username == null) {
+            throw new IllegalArgumentException("No username provided.");
+        }
+
+        password = StringUtils.nullEmptyString(password);
+        privateKey = StringUtils.nullEmptyString(privateKey);
+        publicKey = StringUtils.nullEmptyString(publicKey);
+
+        if ((password == null) && ((privateKey == null) || (publicKey == null))) {
+            throw new IllegalArgumentException("Insufficient authentication information provided. Either a password or a private/public key pair are required.");
+        }
 
         this.hostname = hostname;
         this.port = port;
         this.username = username;
+
         this.password = password;
+        this.privateKey = privateKey;
+        this.publicKey = publicKey;
 
         sshClient = null;
         sftpClient = null;
-    }
-
-    // TEST - Auth
-    public SSHLocation(String hostname) {
-        this(hostname, DEFAULT_PORT, "", "", DEFAULT_BASE_DIR);
     }
 
     public String getHostname() {
@@ -78,7 +98,7 @@ public class SSHLocation extends Location {
     }
 
     /**
-     * Create a location from a string formated as:
+     * Create a location from a string formatted as:
      * `<user>:<password>@<host>[:port][::<path>]`.
      */
     public static SSHLocation fromString(String text) {
@@ -111,7 +131,7 @@ public class SSHLocation extends Location {
             port = Integer.parseInt(hostParts[1]);
         }
 
-        return new SSHLocation(hostname, port, username, password, baseDir);
+        return new SSHLocation(hostname, port, username, password, null, null, baseDir);
     }
 
     public void open() throws Exception {
@@ -128,8 +148,12 @@ public class SSHLocation extends Location {
         sshClient.connect(hostname, port);
 
         // TEST - Put code around auth to make a clean auth error.
-        // TEST - Auth methods (key).
-        sshClient.authPassword(username, password);
+        if (password != null) {
+            sshClient.authPassword(username, password);
+        } else {
+            KeyProvider keys = sshClient.loadKeys(privateKey, publicKey, null);
+            sshClient.authPublickey(username, keys);
+        }
 
         sftpClient = sshClient.newSFTPClient();
     }

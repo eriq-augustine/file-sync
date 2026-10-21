@@ -1,7 +1,7 @@
 package dev.eriq.filesync.location;
 
-import dev.eriq.filesync.Util;
 import dev.eriq.filesync.location.Location;
+import dev.eriq.filesync.util.DirentUtils;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -25,11 +25,11 @@ public class LocalLocation extends Location {
     public void open() throws Exception {
         Path basePath = Path.of(baseDir);
 
-        if (!Util.exists(basePath)) {
+        if (!DirentUtils.exists(basePath)) {
             Files.createDirectories(basePath);
         }
 
-        if (!Util.isDir(basePath)) {
+        if (!DirentUtils.isDir(basePath)) {
             throw new FileNotFoundException(String.format("Base directory for local location exists, but is not a directory: '%s'.", basePath.toString()));
         }
     }
@@ -47,7 +47,7 @@ public class LocalLocation extends Location {
         List<Location.DirentInfo> dirents = new ArrayList<Location.DirentInfo>();
         for (File dirent : path.toFile().listFiles()) {
             Location.DirentInfo.Type type = Location.DirentInfo.Type.OTHER;
-            if (Util.isLink(dirent.toPath())) {
+            if (DirentUtils.isLink(dirent.toPath())) {
                 type = Location.DirentInfo.Type.SYMLINK;
             } else if (dirent.isFile()) {
                 type = Location.DirentInfo.Type.FILE;
@@ -97,18 +97,18 @@ public class LocalLocation extends Location {
         source = source.toAbsolutePath();
         dest = dest.toAbsolutePath();
 
-        if (!Util.exists(source)) {
+        if (!DirentUtils.exists(source)) {
             throw new FileNotFoundException(String.format("Cannot find local file: '%s'.", source.toString()));
         }
 
-        if (Util.exists(dest)) {
-            Util.removeDirent(dest);
+        if (DirentUtils.exists(dest)) {
+            DirentUtils.removeDirent(dest);
         }
 
         // Ensure the dest dir exists.
         Files.createDirectories(dest.getParent());
 
-        if (Util.isDir(source)) {
+        if (DirentUtils.isDir(source)) {
             Files.createDirectory(dest);
         } else {
             Files.copy(source, dest, LinkOption.NOFOLLOW_LINKS, StandardCopyOption.COPY_ATTRIBUTES);
