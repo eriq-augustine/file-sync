@@ -3,6 +3,7 @@ package dev.eriq.filesync;
 import dev.eriq.filesync.Logging;
 import dev.eriq.filesync.TestDirent;
 import dev.eriq.filesync.SSHDockerContainer;
+import dev.eriq.filesync.Sync;
 import dev.eriq.filesync.location.LocalLocation;
 import dev.eriq.filesync.location.Location;
 import dev.eriq.filesync.location.SSHLocation;
@@ -12,7 +13,6 @@ import dev.eriq.filesync.util.NetUtils;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.opentest4j.TestAbortedException;
@@ -25,11 +25,6 @@ import java.util.EnumSet;
 import java.util.List;
 
 public class SyncTest {
-    @BeforeAll
-    public static void setUp() {
-        Logging.init();
-    }
-
     @AfterAll
     public static void tearDown() throws IOException {
         SSHDockerContainer.stopAll();
@@ -127,7 +122,7 @@ public class SyncTest {
                 Files.createDirectories(destLocationDir);
 
                 // Setup the initial source files.
-                loadTestDir(stagingTempDir, dirents);
+                TestDirent.loadTestDir(stagingTempDir, dirents);
 
                 // Setup the final output dir.
                 DirentUtils.removeDirent(finalOutputDir);
@@ -149,7 +144,7 @@ public class SyncTest {
                 sync.sync();
 
                 // Ensure the final output matches the specification.
-                matchTestDir(finalOutputDir, dirents);
+                TestDirent.matchTestDir(finalOutputDir, dirents);
             } catch (TestAbortedException ex) {
                 // Ignore
                 System.out.println(String.format("Skipped test case %d: '%s'.", i, ex.getMessage()));
@@ -472,37 +467,19 @@ public class SyncTest {
 
             try {
                 // Setup the source and dest dirs.
-                loadTestDir(sourceTempDir, testCase.sourceDirents);
-                loadTestDir(destTempDir, testCase.destDirents);
+                TestDirent.loadTestDir(sourceTempDir, testCase.sourceDirents);
+                TestDirent.loadTestDir(destTempDir, testCase.destDirents);
 
                 // Sync between test case locations.
                 Sync sync = new Sync(testCase.source, testCase.dest, testCase.identityChecks, testCase.conflictBehavior);
                 sync.sync();
 
                 // Ensure the final output matches the specification.
-                matchTestDir(destTempDir, testCase.expectedDirents);
+                TestDirent.matchTestDir(destTempDir, testCase.expectedDirents);
             } catch (AssertionError ex) {
                 throw new AssertionError(String.format("Failed test case %d.", i), ex);
             } catch (Exception ex) {
                 throw new AssertionError(String.format("Crashed test case %d.", i), ex);
-            }
-        }
-    }
-
-    private static void loadTestDir(Path tempDir, List<TestDirent> dirents) throws IOException {
-        DirentUtils.removeDirent(tempDir);
-        Files.createDirectories(tempDir);
-
-        for (TestDirent dirent : dirents) {
-            dirent.write(tempDir);
-        }
-    }
-
-    private static void matchTestDir(Path tempDir, List<TestDirent> dirents) throws IOException {
-        for (TestDirent dirent : dirents) {
-            String message = dirent.match(tempDir);
-            if (message != null) {
-                Assertions.fail("Dirent does not match: " + message);
             }
         }
     }

@@ -2,6 +2,8 @@ package dev.eriq.filesync;
 
 import dev.eriq.filesync.util.DirentUtils;
 
+import org.junit.jupiter.api.Assertions;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -137,6 +139,24 @@ public abstract class TestDirent {
             }
 
             return String.format("Link target differ. Expected: '%s', Actual: '%s'.", target, target);
+        }
+    }
+
+    public static void loadTestDir(Path tempDir, List<TestDirent> dirents) throws IOException {
+        DirentUtils.removeDirent(tempDir);
+        Files.createDirectories(tempDir);
+
+        for (TestDirent dirent : dirents) {
+            dirent.write(tempDir);
+        }
+    }
+
+    public static void matchTestDir(Path tempDir, List<TestDirent> dirents) throws IOException {
+        for (TestDirent dirent : dirents) {
+            String message = dirent.match(tempDir);
+            if (message != null) {
+                Assertions.fail("Dirent does not match: " + message);
+            }
         }
     }
 }

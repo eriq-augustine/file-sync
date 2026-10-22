@@ -1,5 +1,6 @@
 package dev.eriq.filesync;
 
+import dev.eriq.filesync.Logging;
 import dev.eriq.filesync.location.SSHLocation;
 
 import com.sun.security.auth.module.UnixSystem;
@@ -11,7 +12,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 public class SSHDockerContainer {
-    private static final Logger logger = Logger.getLogger(SyncTest.class.getName());
+    private static final Logger logger = Logging.getLogger(SSHDockerContainer.class.getName());
 
     public static final String CONTAINER_NAME = "filesync-ssh-test";
 
