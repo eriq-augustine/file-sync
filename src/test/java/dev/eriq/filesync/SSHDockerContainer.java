@@ -2,6 +2,7 @@ package dev.eriq.filesync;
 
 import dev.eriq.filesync.Logging;
 import dev.eriq.filesync.location.SSHLocation;
+import dev.eriq.filesync.util.CryptoUtils;
 
 import com.sun.security.auth.module.UnixSystem;
 import java.io.IOException;
@@ -64,7 +65,7 @@ public class SSHDockerContainer {
 
         UnixSystem system = new UnixSystem();
 
-        List<String> command = List.of(
+        List<String> command = new ArrayList<String>(List.of(
             "docker", "run",
             "--rm",
             "--name=" + CONTAINER_NAME + "-" + location.getPort(),
@@ -73,11 +74,21 @@ public class SSHDockerContainer {
             "--env", "TZ=UTC",
             "--env", "PASSWORD_ACCESS=true",
             "--env", "USER_NAME=" + location.getUsername(),
-            "--env", "USER_PASSWORD=" + location.getPassword(),
             "-p", location.getPort() + ":2222",
-            "-v", mountDir.toAbsolutePath().toString() + ":" + MOUNT_DIR,
-            "lscr.io/linuxserver/openssh-server:version-10.3_p1-r1"
-        );
+            "-v", mountDir.toAbsolutePath().toString() + ":" + MOUNT_DIR
+        ));
+
+        if (location.getPassword() != null) {
+            command.add("--env");
+            command.add("USER_PASSWORD=" + location.getPassword());
+        }
+
+        if (location.getPublicKey() != null) {
+            command.add("--env");
+            command.add("PUBLIC_KEY=" + CryptoUtils.keyToOpenSSH(location.getPublicKey(), location.getUsername()));
+        }
+
+        command.add(IMAGE);
 
         ProcessBuilder builder = new ProcessBuilder(command);
         builder.redirectOutput(ProcessBuilder.Redirect.DISCARD);

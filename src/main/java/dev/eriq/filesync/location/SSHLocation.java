@@ -1,6 +1,7 @@
 package dev.eriq.filesync.location;
 
 import dev.eriq.filesync.location.Location;
+import dev.eriq.filesync.util.CryptoUtils;
 import dev.eriq.filesync.util.StringUtils;
 
 import net.schmizz.sshj.SSHClient;
@@ -9,7 +10,7 @@ import net.schmizz.sshj.sftp.FileMode;
 import net.schmizz.sshj.sftp.SFTPClient;
 import net.schmizz.sshj.sftp.RemoteResourceInfo;
 import net.schmizz.sshj.transport.verification.PromiscuousVerifier;
-import net.schmizz.sshj.userauth.keyprovider.KeyProvider;
+import net.schmizz.sshj.userauth.keyprovider.KeyPairWrapper;
 import net.schmizz.sshj.xfer.FileSystemFile;
 
 import java.io.File;
@@ -20,6 +21,8 @@ import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -41,8 +44,8 @@ public class SSHLocation extends Location {
     private String username;
 
     private String password;
-    private String privateKey;
-    private String publicKey;
+    private PrivateKey privateKey;
+    private PublicKey publicKey;
 
     private SSHClient sshClient;
     private SFTPClient sftpClient;
@@ -51,9 +54,8 @@ public class SSHLocation extends Location {
      * Create an SSHLocation.
      *
      * Either a password or (private and public keys) are required.
-     * Private keys should be in PKCS8 format, and public keys should in X.509.
      */
-    public SSHLocation(String hostname, int port, String username, String password, String privateKey, String publicKey, String baseDir) {
+    public SSHLocation(String hostname, int port, String username, String password, PrivateKey privateKey, PublicKey publicKey, String baseDir) {
         super(baseDir);
 
         username = StringUtils.nullEmptyString(username);
@@ -62,9 +64,6 @@ public class SSHLocation extends Location {
         }
 
         password = StringUtils.nullEmptyString(password);
-        privateKey = StringUtils.nullEmptyString(privateKey);
-        publicKey = StringUtils.nullEmptyString(publicKey);
-
         if ((password == null) && ((privateKey == null) || (publicKey == null))) {
             throw new IllegalArgumentException("Insufficient authentication information provided. Either a password or a private/public key pair are required.");
         }
@@ -81,6 +80,27 @@ public class SSHLocation extends Location {
         sftpClient = null;
     }
 
+    /**
+     * Convenience constructor when using password authentication.
+     */
+    public static SSHLocation withPassword(String hostname, int port, String username, String password, String baseDir) {
+        return new SSHLocation(hostname, port, username, password, null, null, baseDir);
+    }
+
+    /**
+     * Convenience constructor when using key authentication from string keys.
+     */
+    public static SSHLocation withKeys(String hostname, int port, String username, String privateKey, String publicKey, String baseDir) {
+        return new SSHLocation(hostname, port, username, null, CryptoUtils.parsePrivateKey(privateKey), CryptoUtils.parsePublicKey(publicKey), baseDir);
+    }
+
+    /**
+     * Convenience constructor when using key authentication from keys.
+     */
+    public static SSHLocation withKeys(String hostname, int port, String username, PrivateKey privateKey, PublicKey publicKey, String baseDir) {
+        return new SSHLocation(hostname, port, username, null, privateKey, publicKey, baseDir);
+    }
+
     public String getHostname() {
         return hostname;
     }
@@ -95,6 +115,14 @@ public class SSHLocation extends Location {
 
     public String getPassword() {
         return password;
+    }
+
+    public PrivateKey getPrivateKey() {
+        return privateKey;
+    }
+
+    public PublicKey getPublicKey() {
+        return publicKey;
     }
 
     /**
@@ -151,7 +179,7 @@ public class SSHLocation extends Location {
         if (password != null) {
             sshClient.authPassword(username, password);
         } else {
-            KeyProvider keys = sshClient.loadKeys(privateKey, publicKey, null);
+            KeyPairWrapper keys = new KeyPairWrapper(publicKey, privateKey);
             sshClient.authPublickey(username, keys);
         }
 
