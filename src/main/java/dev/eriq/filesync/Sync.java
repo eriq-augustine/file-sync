@@ -1,5 +1,7 @@
 package dev.eriq.filesync;
 
+import dev.eriq.filesync.Logging;
+import dev.eriq.filesync.errors.FileSyncError;
 import dev.eriq.filesync.location.Location;
 import dev.eriq.filesync.util.DirentUtils;
 
@@ -12,11 +14,14 @@ import java.util.LinkedList;
 import java.util.Map;
 import java.util.Queue;
 import java.util.UUID;
+import java.util.logging.Logger;
 
 /**
  * A sync action between two locations.
  */
 public class Sync {
+    private static final Logger logger = Logging.getLogger(Sync.class.getName());
+
     /**
      * Checks that are used to see if two dirents (with the same name and type) are the same.
      *
@@ -86,7 +91,7 @@ public class Sync {
      *
      * Syncing will happen one directory at a time in a breadth-first fashion.
      */
-    public void sync() throws Exception {
+    public void sync() {
         try {
             source.open();
             dest.open();
@@ -98,14 +103,19 @@ public class Sync {
         }
     }
 
-    private void syncFull() throws IOException {
+    private void syncFull() {
         // Create a fringe initially populated with the current directory.
         Queue<String> fringe = new LinkedList<String>();
         fringe.add(".");
 
         // Sync each directory until the fringe is empty.
         while (!fringe.isEmpty()) {
-            syncDir(fringe.remove(), fringe);
+            String nextDir = fringe.remove();
+            try {
+                syncDir(nextDir, fringe);
+            } catch (FileSyncError ex) {
+                logger.log(java.util.logging.Level.WARNING, String.format("Failed to sync directory: '%s'.", nextDir), ex);
+            }
         }
     }
 
@@ -113,7 +123,7 @@ public class Sync {
      * Sync a single dir.
      * Any discovered directories will be placed into the fringe.
      */
-    private void syncDir(String relpath, Queue<String> fringe) throws IOException {
+    private void syncDir(String relpath, Queue<String> fringe) {
         // Build a map of dirents currently in the dest dir.
         // {name: info, ...}.
         Map<String, Location.DirentInfo> destDirents = new HashMap<String, Location.DirentInfo>();
@@ -124,48 +134,60 @@ public class Sync {
         for (Location.DirentInfo dirent : source.listDir(relpath)) {
             String direntRelpath = source.joinPath(relpath, dirent.getName());
 
-            // Check for and handle any conflicts.
-            if (destDirents.containsKey(dirent.getName())) {
-                // Check for a true conflict.
-                if (isConflict(dirent, destDirents.get(dirent.getName()))) {
-                    // This is a conflict, decide what to do.
-                    if (conflictBehavior == ConflictBehavior.SKIP) {
-                        continue;
-                    }
+            try {
+                syncDir(dirent, direntRelpath, destDirents, fringe);
+            } catch (FileSyncError ex) {
+                logger.log(java.util.logging.Level.WARNING, String.format("Failed to sync dirent: '%s'.", direntRelpath), ex);
+            }
+        }
+    }
+
+    /**
+     * Sync a single dirent.
+     * Any discovered directories will be placed into the fringe.
+     */
+    private void syncDir(Location.DirentInfo dirent, String relpath, Map<String, Location.DirentInfo> destDirents, Queue<String> fringe) {
+        // Check for and handle any conflicts.
+        if (destDirents.containsKey(dirent.getName())) {
+            // Check for a true conflict.
+            if (isConflict(dirent, destDirents.get(dirent.getName()))) {
+                // This is a conflict, decide what to do.
+                if (conflictBehavior == ConflictBehavior.SKIP) {
+                    return;
+                }
+            }
+
+            // There is a dirent with the same name, and we are not skipping.
+            // It must be removed in the dest.
+            dest.removeDirent(relpath, destDirents.get(dirent.getName()));
+        }
+
+        switch (dirent.getType()) {
+            case DIR:
+                dest.makeDir(relpath);
+
+                // Add dirs to the fringe.
+                fringe.add(relpath);
+
+                break;
+            case FILE:
+                Path tempPath = Paths.get(System.getProperty("java.io.tmpdir"), UUID.randomUUID().toString());
+
+                try {
+                    // Download the dirent.
+                    source.fetchFile(relpath, tempPath);
+
+                    // Upload the dirent.
+                    dest.putFile(tempPath, relpath);
+                } finally {
+                    // Remove the temp path.
+                    DirentUtils.removeDirent(tempPath);
                 }
 
-                // There is a dirent with the same name, and we are not skipping.
-                // It must be removed in the dest.
-                dest.removeDirent(direntRelpath, destDirents.get(dirent.getName()));
-            }
-
-            switch (dirent.getType()) {
-                case DIR:
-                    dest.makeDir(direntRelpath);
-
-                    // Add dirs to the fringe.
-                    fringe.add(direntRelpath);
-
-                    break;
-                case FILE:
-                    Path tempPath = Paths.get(System.getProperty("java.io.tmpdir"), UUID.randomUUID().toString());
-
-                    try {
-                        // Download the dirent.
-                        source.fetchFile(direntRelpath, tempPath);
-
-                        // Upload the dirent.
-                        dest.putFile(tempPath, direntRelpath);
-                    } finally {
-                        // Remove the temp path.
-                        DirentUtils.removeDirent(tempPath);
-                    }
-
-                    break;
-                case SYMLINK:
-                    dest.createLink(direntRelpath, source.readLink(direntRelpath));
-                    break;
-            }
+                break;
+            case SYMLINK:
+                dest.createLink(relpath, source.readLink(relpath));
+                break;
         }
     }
 

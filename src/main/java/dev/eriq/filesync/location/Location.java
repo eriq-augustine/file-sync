@@ -1,5 +1,8 @@
 package dev.eriq.filesync.location;
 
+import dev.eriq.filesync.errors.BadInputError;
+import dev.eriq.filesync.errors.IOError;
+
 import dev.eriq.filesync.location.LocalLocation;
 import dev.eriq.filesync.location.SSHLocation;
 
@@ -55,7 +58,7 @@ public abstract class Location implements AutoCloseable {
             case "ssh":
                 return SSHLocation.fromString(parts[1]);
             default:
-                throw new IllegalArgumentException(String.format("Unknown location type ('%s') for: '%s'.", type, text));
+                throw new BadInputError(String.format("Unknown location type ('%s') for: '%s'.", type, text));
         }
     }
 
@@ -66,13 +69,13 @@ public abstract class Location implements AutoCloseable {
      *
      * This method should throw if there are any issues connecting/locating the location or base dir.
      */
-    public abstract void open() throws Exception;
+    public abstract void open();
 
     /**
      * Close this location and release all resources.
      * A closed location can be opened again.
      */
-    public abstract void close() throws Exception;
+    public abstract void close();
 
     /**
      * Join two elements of a relative path together for this location.
@@ -83,53 +86,53 @@ public abstract class Location implements AutoCloseable {
     /**
      * List a directory.
      */
-    public abstract List<DirentInfo> listDir(String relpath) throws IOException;
+    public abstract List<DirentInfo> listDir(String relpath);
 
     /**
      * Make a directory.
      * Parent non-existent directories are not created.
      */
-    public abstract void makeDir(String relpath) throws IOException;
+    public abstract void makeDir(String relpath);
 
     /**
      * Remove an empty directory.
      */
-    public abstract void removeDir(String relpath) throws IOException;
+    public abstract void removeDir(String relpath);
 
     /**
      * Fetch a file from this location and place it at the given temp path.
      */
-    public abstract void fetchFile(String relpath, Path tempPath) throws IOException;
+    public abstract void fetchFile(String relpath, Path tempPath);
 
     /**
      * Put a file into this location.
      */
-    public abstract void putFile(Path tempPath, String relpath) throws IOException;
+    public abstract void putFile(Path tempPath, String relpath);
 
     /**
      * Remove a file.
      */
-    public abstract void removeFile(String relpath) throws IOException;
+    public abstract void removeFile(String relpath);
 
     /**
      * Read the target of a link.
      */
-    public abstract String readLink(String relpath) throws IOException;
+    public abstract String readLink(String relpath);
 
     /**
      * Create a link with the given target.
      */
-    public abstract void createLink(String relpath, String target) throws IOException;
+    public abstract void createLink(String relpath, String target);
 
     /**
      * Remove a link.
      */
-    public abstract void removeLink(String relpath) throws IOException;
+    public abstract void removeLink(String relpath);
 
     /**
      * Convenience method that calls the correct method for the dirent type.
      */
-    public void removeDirent(String relpath, DirentInfo direntInfo) throws IOException {
+    public void removeDirent(String relpath, DirentInfo direntInfo) {
         switch (direntInfo.getType()) {
             case DIR:
                 removeDirRecursive(relpath);
@@ -141,14 +144,14 @@ public abstract class Location implements AutoCloseable {
                 removeLink(relpath);
                 break;
             default:
-                throw new IOException(String.format("Unknown file mode ('%s') when removing '%s'.", direntInfo.getType(), relpath));
+                throw new IOError(String.format("Unknown file mode ('%s') when removing '%s'.", direntInfo.getType(), relpath));
         }
     }
 
     /**
      * A convenience function for remove a directory and all its contents.
      */
-    public void removeDirRecursive(String relpath) throws IOException {
+    public void removeDirRecursive(String relpath) {
         for (DirentInfo dirent : listDir(relpath)) {
             removeDirent(joinPath(relpath, dirent.getName()), dirent);
         }

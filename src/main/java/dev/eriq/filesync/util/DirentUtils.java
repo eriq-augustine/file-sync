@@ -1,5 +1,7 @@
 package dev.eriq.filesync.util;
 
+import dev.eriq.filesync.errors.IOError;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -47,14 +49,26 @@ public class DirentUtils {
      * Get a dirent's mod time (in MS) using this project's standard rules.
      * This will not follow links.
      */
-    public static long getModTime(Path path) throws IOException {
-        return Files.getLastModifiedTime(path, LinkOption.NOFOLLOW_LINKS).toMillis();
+    public static long getModTime(Path path) {
+        try {
+            return Files.getLastModifiedTime(path, LinkOption.NOFOLLOW_LINKS).toMillis();
+        } catch (IOException ex) {
+            throw new IOError(String.format("Failed to get mod time for: '%s'.", path), ex);
+        }
     }
 
     /**
      * Remove a dirent, which can be a populated directory.
      */
-    public static void removeDirent(Path path) throws IOException {
+    public static void removeDirent(Path path) {
+        try {
+            _removeDirent(path);
+        } catch (IOException ex) {
+            throw new IOError(String.format("Failed to remove dirent: '%s'.", path), ex);
+        }
+    }
+
+    private static void _removeDirent(Path path) throws IOException {
         if (!exists(path)) {
             return;
         }
@@ -78,13 +92,19 @@ public class DirentUtils {
         Files.delete(path);
     }
 
-    public static Path getTempDir(String name) throws IOException {
-        Path tempDir = Files.createTempDirectory("filesync-test-" + name + "-");
+    public static Path getTempDir(String name) {
+        Path tempDir = null;
+        try {
+            tempDir = Files.createTempDirectory("filesync-test-" + name + "-");
+        } catch (IOException ex) {
+            throw new IOError("Failed to get temp dir.", ex);
+        }
+
         tempDirs.add(tempDir);
         return tempDir;
     }
 
-    public static void removeTempDirs() throws IOException {
+    public static void removeTempDirs() {
         for (Path tempDir : tempDirs) {
             removeDirent(tempDir);
         }

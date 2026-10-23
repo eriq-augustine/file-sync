@@ -1,5 +1,8 @@
 package dev.eriq.filesync.util;
 
+import dev.eriq.filesync.errors.BadInputError;
+import dev.eriq.filesync.errors.FileSyncError;
+
 import java.io.IOException;
 import java.net.ServerSocket;
 
@@ -18,7 +21,7 @@ public class NetUtils {
      */
     public static boolean portAvailable(int port) {
         if ((port < PORT_MIN) || (port > PORT_MAX)) {
-            throw new IllegalArgumentException(String.format("Port (%d) is out of range [%d, %d].", port, PORT_MIN, PORT_MAX));
+            throw new BadInputError(String.format("Port (%d) is out of range [%d, %d].", port, PORT_MIN, PORT_MAX));
         }
 
         ServerSocket server = null;
@@ -60,7 +63,7 @@ public class NetUtils {
             }
         }
 
-        throw new RuntimeException("Could not find open port.");
+        throw new FileSyncError("Could not find open port.");
     }
 
     public static int findAvailablePort() {

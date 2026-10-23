@@ -26,23 +26,23 @@ import java.util.List;
 
 public class SyncTest {
     @AfterAll
-    public static void tearDown() throws IOException {
+    public static void tearDown() {
         SSHDockerContainer.stopAll();
         DirentUtils.removeTempDirs();
     }
 
     private interface LocationFactory {
-        public Location create(Path baseDir) throws IOException;
+        public Location create(Path baseDir);
     }
 
     private class LocalLocationFactory implements LocationFactory {
-        public Location create(Path baseDir) throws IOException {
+        public Location create(Path baseDir) {
             return new LocalLocation(baseDir);
         }
     }
 
     private class SSHLocationFactory implements LocationFactory {
-        public Location create(Path baseDir) throws IOException {
+        public Location create(Path baseDir) {
             Assumptions.assumeTrue(SSHDockerContainer.isAvailable(), "Docker is not available");
 
             int port = NetUtils.findAvailablePort();
@@ -63,16 +63,16 @@ public class SyncTest {
     }
 
     @Test
-    public void testSyncSimpleBaseLocal() throws Exception {
+    public void testSyncSimpleBaseLocal() {
         testSyncSimpleBase(new LocalLocationFactory(), new LocalLocationFactory());
     }
 
     @Test
-    public void testSyncSimpleBaseSSH() throws Exception {
+    public void testSyncSimpleBaseSSH() {
         testSyncSimpleBase(new SSHLocationFactory(), new SSHLocationFactory());
     }
 
-    private void testSyncSimpleBase(LocationFactory sourceFactory, LocationFactory destFactory) throws Exception {
+    private void testSyncSimpleBase(LocationFactory sourceFactory, LocationFactory destFactory) {
         List<List<TestDirent>> testCases = List.of(
             // Empty
             List.of(),
@@ -159,7 +159,7 @@ public class SyncTest {
     }
 
     @Test
-    public void testSyncConflicts(@TempDir Path sourceTempDir, @TempDir Path destTempDir) throws Exception {
+    public void testSyncConflicts(@TempDir Path sourceTempDir, @TempDir Path destTempDir) {
         class TestCase {
             public Location source;
             public Location dest;

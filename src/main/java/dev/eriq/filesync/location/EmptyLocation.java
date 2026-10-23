@@ -1,8 +1,8 @@
 package dev.eriq.filesync.location;
 
+import dev.eriq.filesync.errors.NotSupportedError;
 import dev.eriq.filesync.location.Location;
 
-import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -15,43 +15,43 @@ public class EmptyLocation extends Location {
         super("");
     }
 
-    public void open() throws Exception {
+    public void open() {
     }
 
-    public void close() throws Exception {
+    public void close() {
     }
 
     public String joinPath(String a, String b) {
         return a + "/" + b;
     }
 
-    public List<Location.DirentInfo> listDir(String relpath) throws IOException {
+    public List<Location.DirentInfo> listDir(String relpath) {
         return new ArrayList<Location.DirentInfo>();
     }
 
-    public void makeDir(String relpath) throws IOException {
+    public void makeDir(String relpath) {
     }
 
-    public void removeDir(String relpath) throws IOException {
+    public void removeDir(String relpath) {
     }
 
-    public void fetchFile(String relpath, Path tempPath) throws IOException {
-        throw new UnsupportedOperationException("Reading an empty location file.");
+    public void fetchFile(String relpath, Path tempPath) {
+        throw new NotSupportedError("Reading an empty location file.");
     }
 
-    public void putFile(Path tempPath, String relpath) throws IOException {
+    public void putFile(Path tempPath, String relpath) {
     }
 
-    public void removeFile(String relpath) throws IOException {
+    public void removeFile(String relpath) {
     }
 
-    public String readLink(String relpath) throws IOException {
-        throw new UnsupportedOperationException("Reading an empty location link.");
+    public String readLink(String relpath) {
+        throw new NotSupportedError("Reading an empty location link.");
     }
 
-    public void createLink(String relpath, String target) throws IOException {
+    public void createLink(String relpath, String target) {
     }
 
-    public void removeLink(String relpath) throws IOException {
+    public void removeLink(String relpath) {
     }
 }

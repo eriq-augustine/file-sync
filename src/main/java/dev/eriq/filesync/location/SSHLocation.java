@@ -1,5 +1,9 @@
 package dev.eriq.filesync.location;
 
+import dev.eriq.filesync.Logging;
+import dev.eriq.filesync.errors.AuthError;
+import dev.eriq.filesync.errors.BadInputError;
+import dev.eriq.filesync.errors.IOError;
 import dev.eriq.filesync.location.Location;
 import dev.eriq.filesync.util.CryptoUtils;
 import dev.eriq.filesync.util.StringUtils;
@@ -10,6 +14,7 @@ import net.schmizz.sshj.sftp.FileMode;
 import net.schmizz.sshj.sftp.SFTPClient;
 import net.schmizz.sshj.sftp.RemoteResourceInfo;
 import net.schmizz.sshj.transport.verification.PromiscuousVerifier;
+import net.schmizz.sshj.userauth.UserAuthException;
 import net.schmizz.sshj.userauth.keyprovider.KeyPairWrapper;
 import net.schmizz.sshj.xfer.FileSystemFile;
 
@@ -25,11 +30,14 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Logger;
 
 /**
  * A location that is accessible via an SSH connection.
  */
 public class SSHLocation extends Location {
+    private static final Logger logger = Logging.getLogger(SSHLocation.class.getName());
+
     public static final int DEFAULT_PORT = 22;
 
     public static final String DEFAULT_BASE_DIR = ".";
@@ -60,12 +68,12 @@ public class SSHLocation extends Location {
 
         username = StringUtils.nullEmptyString(username);
         if (username == null) {
-            throw new IllegalArgumentException("No username provided.");
+            throw new BadInputError("No username provided.");
         }
 
         password = StringUtils.nullEmptyString(password);
         if ((password == null) && ((privateKey == null) || (publicKey == null))) {
-            throw new IllegalArgumentException("Insufficient authentication information provided. Either a password or a private/public key pair are required.");
+            throw new BadInputError("Insufficient authentication information provided. Either a password or a private/public key pair are required.");
         }
 
         this.hostname = hostname;
@@ -139,12 +147,12 @@ public class SSHLocation extends Location {
 
         String[] connectionParts = pathParts[0].split("@", 2);
         if (connectionParts.length == 1) {
-            throw new IllegalArgumentException(String.format("SSH location text does not contain a '@': '%s'.", text));
+            throw new BadInputError(String.format("SSH location text does not contain a '@': '%s'.", text));
         }
 
         String[] userParts = connectionParts[0].split(":", 2);
         if (userParts.length == 1) {
-            throw new IllegalArgumentException(String.format("SSH location text does have both a username and password: '%s'.", text));
+            throw new BadInputError(String.format("SSH location text does have both a username and password: '%s'.", text));
         }
 
         String username = userParts[0];
@@ -162,7 +170,15 @@ public class SSHLocation extends Location {
         return new SSHLocation(hostname, port, username, password, null, null, baseDir);
     }
 
-    public void open() throws Exception {
+    public void open() {
+        try {
+            _open();
+        } catch (IOException ex) {
+            throw new IOError(String.format("Failed to connect to remote SSH server: '%s:%d'.", hostname, port), ex);
+        }
+    }
+
+    private void _open() throws IOException {
         // Check for already opened.
         if (sshClient != null) {
             return;
@@ -175,18 +191,34 @@ public class SSHLocation extends Location {
 
         sshClient.connect(hostname, port);
 
-        // TEST - Put code around auth to make a clean auth error.
         if (password != null) {
-            sshClient.authPassword(username, password);
+            try {
+                sshClient.authPassword(username, password);
+            } catch (UserAuthException ex) {
+                throw new AuthError(String.format("Failed to authenticate user '%s' with password.", username), ex);
+            }
         } else {
             KeyPairWrapper keys = new KeyPairWrapper(publicKey, privateKey);
-            sshClient.authPublickey(username, keys);
+
+            try {
+                sshClient.authPublickey(username, keys);
+            } catch (UserAuthException ex) {
+                throw new AuthError(String.format("Failed to authenticate user '%s' with keys.", username), ex);
+            }
         }
 
         sftpClient = sshClient.newSFTPClient();
     }
 
-    public void close() throws Exception {
+    public void close() {
+        try {
+            _close();
+        } catch (IOException ex) {
+            logger.log(java.util.logging.Level.WARNING, String.format("Failed to close connection to remote SSH server: '%s:%d'.", hostname, port), ex);
+        }
+    }
+
+    public void _close() throws IOException {
         // Check for already closed.
         if (sshClient == null) {
             return;
@@ -207,11 +239,18 @@ public class SSHLocation extends Location {
         return a + PATH_SEP + b;
     }
 
-    public List<Location.DirentInfo> listDir(String relpath) throws IOException {
+    public List<Location.DirentInfo> listDir(String relpath) {
         String path = joinPath(baseDir, relpath);
 
+        List<RemoteResourceInfo> rawDirents = null;
+        try {
+            rawDirents = sftpClient.ls(path);
+        } catch (IOException ex) {
+            throw new IOError(String.format("Failed to list remote directory: '%s'.", path), ex);
+        }
+
         List<Location.DirentInfo> dirents = new ArrayList<Location.DirentInfo>();
-        for (RemoteResourceInfo dirent : sftpClient.ls(path)) {
+        for (RemoteResourceInfo dirent : rawDirents) {
             FileAttributes attributes = dirent.getAttributes();
 
             Location.DirentInfo.Type type = Location.DirentInfo.Type.OTHER;
@@ -233,45 +272,85 @@ public class SSHLocation extends Location {
         return dirents;
     }
 
-    public void makeDir(String relpath) throws IOException {
+    public void makeDir(String relpath) {
         String path = joinPath(baseDir, relpath);
-        sftpClient.mkdirs(path);
+
+        try {
+            sftpClient.mkdirs(path);
+        } catch (IOException ex) {
+            throw new IOError(String.format("Failed to make remote directory: '%s'.", path), ex);
+        }
     }
 
-    public void removeDir(String relpath) throws IOException {
+    public void removeDir(String relpath) {
         String path = joinPath(baseDir, relpath);
-        sftpClient.rmdir(path);
+
+        try {
+            sftpClient.rmdir(path);
+        } catch (IOException ex) {
+            throw new IOError(String.format("Failed to remove remote directory: '%s'.", path), ex);
+        }
     }
 
-    public void fetchFile(String relpath, Path tempPath) throws IOException {
+    public void fetchFile(String relpath, Path tempPath) {
         String path = joinPath(baseDir, relpath);
-        sftpClient.get(path, new FileSystemFile(tempPath.toString()));
+
+        try {
+            sftpClient.get(path, new FileSystemFile(tempPath.toString()));
+        } catch (IOException ex) {
+            throw new IOError(String.format("Failed to fetch remote file: '%s'.", path), ex);
+        }
     }
 
-    public void putFile(Path tempPath, String relpath) throws IOException {
+    public void putFile(Path tempPath, String relpath) {
         String path = joinPath(baseDir, relpath);
-        sftpClient.put(new FileSystemFile(tempPath.toString()), path);
+
+        try {
+            sftpClient.put(new FileSystemFile(tempPath.toString()), path);
+        } catch (IOException ex) {
+            throw new IOError(String.format("Failed to put remote file: '%s'.", path), ex);
+        }
     }
 
-    public void removeFile(String relpath) throws IOException {
+    public void removeFile(String relpath) {
         String path = joinPath(baseDir, relpath);
-        sftpClient.rm(path);
+
+        try {
+            sftpClient.rm(path);
+        } catch (IOException ex) {
+            throw new IOError(String.format("Failed to remove remote file: '%s'.", path), ex);
+        }
     }
 
-    public String readLink(String relpath) throws IOException {
+    public String readLink(String relpath) {
         String path = joinPath(baseDir, relpath);
-        return sftpClient.readlink(path);
+
+        try {
+            return sftpClient.readlink(path);
+        } catch (IOException ex) {
+            throw new IOError(String.format("Failed to read remote symlink: '%s'.", path), ex);
+        }
     }
 
-    public void createLink(String relpath, String target) throws IOException {
+    public void createLink(String relpath, String target) {
         String path = joinPath(baseDir, relpath);
-        // Note that the order is a bit off because of an old upstream bug.
-        // See: https://github.com/hierynomus/sshj/issues/144
-        sftpClient.symlink(target, path);
+
+        try {
+            // Note that the order is a bit off because of an old upstream bug.
+            // See: https://github.com/hierynomus/sshj/issues/144
+            sftpClient.symlink(target, path);
+        } catch (IOException ex) {
+            throw new IOError(String.format("Failed to create remote symlink: '%s'.", path), ex);
+        }
     }
 
-    public void removeLink(String relpath) throws IOException {
+    public void removeLink(String relpath) {
         String path = joinPath(baseDir, relpath);
-        sftpClient.rm(path);
+
+        try {
+            sftpClient.rm(path);
+        } catch (IOException ex) {
+            throw new IOError(String.format("Failed to remove remote symlink: '%s'.", path), ex);
+        }
     }
 }

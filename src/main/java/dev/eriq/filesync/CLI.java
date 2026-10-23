@@ -12,7 +12,7 @@ import java.util.stream.Collectors;
 public class CLI {
     public static final Sync.ConflictBehavior DEFAULT_CONFLICT_BEHAVIOR = Sync.ConflictBehavior.SKIP;
 
-    public static void main(String[] argv) throws Exception {
+    public static void main(String[] argv) {
         Logging.init();
 
         List<String> args = new ArrayList<String>();

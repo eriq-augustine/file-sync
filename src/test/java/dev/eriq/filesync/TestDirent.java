@@ -1,5 +1,6 @@
 package dev.eriq.filesync;
 
+import dev.eriq.filesync.errors.IOError;
 import dev.eriq.filesync.util.DirentUtils;
 
 import org.junit.jupiter.api.Assertions;
@@ -36,7 +37,7 @@ public abstract class TestDirent {
         * Check if this dirent exists in the base dir.
         * Will return an error message on a bad match, and null on a successful match.
         */
-    public String match(Path baseDir) throws IOException {
+    public String match(Path baseDir) {
         Path path = getPath(baseDir);
 
         if (!DirentUtils.exists(path)) {
@@ -55,18 +56,27 @@ public abstract class TestDirent {
         return String.format("Failed to match '%s': %s.", relpath, message);
     }
 
-    public void write(Path baseDir) throws IOException {
+    public void write(Path baseDir) {
         Path path = getPath(baseDir);
-        innerWrite(path);
+
+        try {
+            innerWrite(path);
+        } catch (IOException ex) {
+            throw new IOError(String.format("Failed to write test dirent: '%s'.", path), ex);
+        }
 
         if (this instanceof File) {
-            Files.setLastModifiedTime(path, FileTime.fromMillis(modTimeMS));
+            try {
+                Files.setLastModifiedTime(path, FileTime.fromMillis(modTimeMS));
+            } catch (IOException ex) {
+                throw new IOError(String.format("Failed to set mod time: '%s'.", path), ex);
+            }
         }
     }
 
-    public abstract void innerWrite(Path path) throws IOException;
+    protected abstract void innerWrite(Path path) throws IOException;
 
-    public abstract String innerMatch(Path path) throws IOException;
+    public abstract String innerMatch(Path path);
 
     public static class File extends TestDirent {
         public String contents;
@@ -77,17 +87,24 @@ public abstract class TestDirent {
             this.contents = contents;
         }
 
-        public void innerWrite(Path path) throws IOException {
+        protected void innerWrite(Path path) throws IOException {
             Files.createDirectories(path.getParent());
             Files.write(path, List.of(contents));
         }
 
-        public String innerMatch(Path path) throws IOException {
+        public String innerMatch(Path path) {
             if (!DirentUtils.isFile(path)) {
                 return String.format("Dirent is not a file: '%s'.", relpath);
             }
 
-            String contents = String.join(System.lineSeparator(), Files.readAllLines(path));
+            List<String> lines = null;
+            try {
+                lines = Files.readAllLines(path);
+            } catch (IOException ex) {
+                throw new IOError(String.format("Failed to read test file lines: '%s'.", path), ex);
+            }
+
+            String contents = String.join(System.lineSeparator(), lines);
             if (contents.equals(contents)) {
                 return null;
             }
@@ -101,11 +118,11 @@ public abstract class TestDirent {
             super(relpath);
         }
 
-        public void innerWrite(Path path) throws IOException {
+        protected void innerWrite(Path path) throws IOException {
             Files.createDirectories(path);
         }
 
-        public String innerMatch(Path path) throws IOException {
+        public String innerMatch(Path path) {
             if (!DirentUtils.isDir(path)) {
                 return String.format("Dirent is not a dir: '%s'.", relpath);
             }
@@ -123,17 +140,23 @@ public abstract class TestDirent {
             this.target = target;
         }
 
-        public void innerWrite(Path path) throws IOException {
+        protected void innerWrite(Path path) throws IOException {
             Files.createDirectories(path.getParent());
             Files.createSymbolicLink(path, Path.of(target));
         }
 
-        public String innerMatch(Path path) throws IOException {
+        public String innerMatch(Path path) {
             if (!DirentUtils.isLink(path)) {
                 return String.format("Dirent is not a link: '%s'.", relpath);
             }
 
-            String target = Files.readSymbolicLink(path).toString();
+            String target = null;
+            try {
+                target = Files.readSymbolicLink(path).toString();
+            } catch (IOException ex) {
+                throw new IOError(String.format("Failed to read test link: '%s'.", path), ex);
+            }
+
             if (target.equals(target)) {
                 return null;
             }
@@ -142,16 +165,21 @@ public abstract class TestDirent {
         }
     }
 
-    public static void loadTestDir(Path tempDir, List<TestDirent> dirents) throws IOException {
+    public static void loadTestDir(Path tempDir, List<TestDirent> dirents) {
         DirentUtils.removeDirent(tempDir);
-        Files.createDirectories(tempDir);
+
+        try {
+            Files.createDirectories(tempDir);
+        } catch (IOException ex) {
+            throw new IOError(String.format("Failed to make test directory: '%s'.", tempDir), ex);
+        }
 
         for (TestDirent dirent : dirents) {
             dirent.write(tempDir);
         }
     }
 
-    public static void matchTestDir(Path tempDir, List<TestDirent> dirents) throws IOException {
+    public static void matchTestDir(Path tempDir, List<TestDirent> dirents) {
         for (TestDirent dirent : dirents) {
             String message = dirent.match(tempDir);
             if (message != null) {

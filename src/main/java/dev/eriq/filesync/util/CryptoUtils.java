@@ -1,5 +1,8 @@
 package dev.eriq.filesync.util;
 
+import dev.eriq.filesync.errors.BadInputError;
+import dev.eriq.filesync.errors.FileSyncError;
+
 import net.schmizz.sshj.common.Buffer;
 import net.schmizz.sshj.common.KeyType;
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
@@ -34,18 +37,18 @@ public class CryptoUtils {
             PEMParser pemParser = new PEMParser(new StringReader(text));
             rawPrasedObject = pemParser.readObject();
         } catch (java.io.IOException ex) {
-            throw new RuntimeException("Unable to parse private key.", ex);
+            throw new BadInputError("Unable to parse private key.", ex);
         }
 
         if (!(rawPrasedObject instanceof PrivateKeyInfo)) {
-            throw new IllegalArgumentException("Input is not a private key in the PKCS#8 format.");
+            throw new BadInputError("Input is not a private key in the PKCS#8 format.");
         }
 
         try {
             JcaPEMKeyConverter converter = new JcaPEMKeyConverter().setProvider("BC");
             return converter.getPrivateKey((PrivateKeyInfo)rawPrasedObject);
         } catch (org.bouncycastle.openssl.PEMException ex) {
-            throw new RuntimeException("Unable to convert private key.", ex);
+            throw new FileSyncError("Unable to convert private key.", ex);
         }
     }
 
@@ -53,7 +56,7 @@ public class CryptoUtils {
         String[] parts = text.replace("\\s+", " ").split(" ", 3);
 
         if (parts.length == 2) {
-            throw new IllegalArgumentException("Public key is not properly formatted.");
+            throw new BadInputError("Public key is not properly formatted.");
         }
 
         String content = parts[0];
@@ -66,7 +69,7 @@ public class CryptoUtils {
             AsymmetricKeyParameter asymmetricKeyParameter = OpenSSHPublicKeyUtil.parsePublicKey(Base64.getDecoder().decode(content));
             keySpec = new OpenSSHPublicKeySpec(OpenSSHPublicKeyUtil.encodePublicKey(asymmetricKeyParameter));
         } catch (java.io.IOException ex) {
-            throw new RuntimeException("Unable to parse public key.", ex);
+            throw new FileSyncError("Unable to parse public key.", ex);
         }
 
         String algorithm = null;
@@ -75,13 +78,13 @@ public class CryptoUtils {
                 algorithm = "RSA";
                 break;
             default:
-                throw new RuntimeException(String.format("Unable to determine public key algorithm: '%s'.", keySpec.getType()));
+                throw new FileSyncError(String.format("Unable to determine public key algorithm: '%s'.", keySpec.getType()));
         }
 
         try {
             return KeyFactory.getInstance(algorithm).generatePublic(keySpec);
         } catch (java.security.NoSuchAlgorithmException | java.security.spec.InvalidKeySpecException ex) {
-            throw new RuntimeException("Unable to parse public key.", ex);
+            throw new FileSyncError("Unable to parse public key.", ex);
         }
     }
 
@@ -135,7 +138,7 @@ public class CryptoUtils {
         try {
             keyPairGenerator = KeyPairGenerator.getInstance(algorithm, "BC");
         } catch (java.security.NoSuchAlgorithmException | java.security.NoSuchProviderException ex) {
-            throw new RuntimeException(String.format("Could not find key algorithm: '%s'.", algorithm), ex);
+            throw new FileSyncError(String.format("Could not find key algorithm: '%s'.", algorithm), ex);
         }
 
         keyPairGenerator.initialize(size);

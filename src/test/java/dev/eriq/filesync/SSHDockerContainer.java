@@ -1,6 +1,8 @@
 package dev.eriq.filesync;
 
 import dev.eriq.filesync.Logging;
+import dev.eriq.filesync.errors.FileSyncError;
+import dev.eriq.filesync.errors.IOError;
 import dev.eriq.filesync.location.SSHLocation;
 import dev.eriq.filesync.util.CryptoUtils;
 
@@ -56,9 +58,9 @@ public class SSHDockerContainer {
         containerProcess = null;
     }
 
-    public void start() throws IOException {
+    public void start() {
         if (containerProcess != null) {
-            throw new RuntimeException("Container already started.");
+            throw new FileSyncError("Container already started.");
         }
 
         logger.info(String.format("Starting test SSH Docker container: '%s:%d'.", location.getHostname(), location.getPort()));
@@ -94,7 +96,11 @@ public class SSHDockerContainer {
         builder.redirectOutput(ProcessBuilder.Redirect.DISCARD);
         builder.redirectError(ProcessBuilder.Redirect.DISCARD);
 
-        containerProcess = builder.start();
+        try {
+            containerProcess = builder.start();
+        } catch (IOException ex) {
+            throw new IOError("Failed to start SSH docker container.", ex);
+        }
 
         try {
             Thread.sleep(STARTUP_WAIT_MSEC);

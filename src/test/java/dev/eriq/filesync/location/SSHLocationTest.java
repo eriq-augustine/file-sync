@@ -21,13 +21,13 @@ import java.security.KeyPair;
 
 public class SSHLocationTest {
     @AfterAll
-    public static void tearDown() throws IOException {
+    public static void tearDown() {
         SSHDockerContainer.stopAll();
         DirentUtils.removeTempDirs();
     }
 
     @Test
-    public void TestKeyGeneration() throws Exception {
+    public void TestKeyGeneration() {
         KeyPair pair = CryptoUtils.generateRSAKeyPair();
 
         int minLength = 1620;
@@ -40,7 +40,7 @@ public class SSHLocationTest {
     }
 
     @Test
-    public void TestAuthPassword(@TempDir Path tempDir) throws Exception {
+    public void TestAuthPassword(@TempDir Path tempDir) {
         Assumptions.assumeTrue(SSHDockerContainer.isAvailable(), "Docker is not available");
 
         int port = NetUtils.findAvailablePort();
@@ -62,7 +62,7 @@ public class SSHLocationTest {
     }
 
     @Test
-    public void TestAuthKey(@TempDir Path tempDir) throws Exception {
+    public void TestAuthKey(@TempDir Path tempDir) {
         Assumptions.assumeTrue(SSHDockerContainer.isAvailable(), "Docker is not available");
 
         int port = NetUtils.findAvailablePort();
@@ -86,7 +86,7 @@ public class SSHLocationTest {
     }
 
     @Test
-    public void TestAuthKeyString(@TempDir Path tempDir) throws Exception {
+    public void TestAuthKeyString(@TempDir Path tempDir) {
         Assumptions.assumeTrue(SSHDockerContainer.isAvailable(), "Docker is not available");
 
         int port = NetUtils.findAvailablePort();
