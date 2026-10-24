@@ -37,7 +37,6 @@ public class CryptoUtils {
         Security.addProvider(new BouncyCastleProvider());
     }
 
-    // TEST - Make tests for this. Check if other formats work. (openssh-style, pkcs#1 pkcs#8).
     public static PrivateKey parsePrivateKey(String text) {
         Object rawPrasedObject = null;
         try {

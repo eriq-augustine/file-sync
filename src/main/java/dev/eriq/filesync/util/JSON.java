@@ -71,45 +71,6 @@ public class JSON {
 
             return json.toString();
         }
-
-        public static <T extends MapConverter> T fromJSON(String text) {
-            JSONObject json = null;
-            try {
-                json = new JSONObject(text);
-            } catch (JSONException ex) {
-                throw new BadInputError("Failed to parse JSON for MapConverter.", ex);
-            }
-
-            Map<String, Object> data = json.toMap();
-
-            if (!data.containsKey(CLASS_NAME_KEY)) {
-                throw new BadInputError(String.format("JSON object cannot be deserialized. It does not contain a class key: '%s'.", CLASS_NAME_KEY));
-            }
-
-            String className = data.get(CLASS_NAME_KEY).toString();
-            Class serialClass = null;
-            try {
-                serialClass = Class.forName(className);
-            } catch (ClassNotFoundException ex) {
-                throw new BadInputError(String.format("Could not find class for deserialization: '%s'.", className), ex);
-            }
-
-            Method constructionMethod = null;
-            try {
-                constructionMethod = serialClass.getDeclaredMethod("fromMap", Map.class);
-            } catch (NoSuchMethodException ex) {
-                throw new BadInputError(String.format("Deserialization class '%s' does not have the static method 'fromMap'.", className), ex);
-            }
-
-            Object result = null;
-            try {
-                result = constructionMethod.invoke(null, data);
-            } catch (IllegalAccessException | InvocationTargetException ex) {
-                throw new BadInputError(String.format("Failed to call deserialization method '%s.fromMap()'.", className), ex);
-            }
-
-            return (T)result;
-        }
     }
 
     public static String toJSON(MapConverter object) {
@@ -120,8 +81,46 @@ public class JSON {
         return object.toJSON(pretty, sort);
     }
 
-    public static <T extends MapConverter> T fromJSON(String text) {
-        return T.fromJSON(text);
+    public static Object fromJSON(String text) {
+        JSONObject json = null;
+        try {
+            json = new JSONObject(text);
+        } catch (JSONException ex) {
+            throw new BadInputError("Failed to parse JSON for MapConverter.", ex);
+        }
+
+        Map<String, Object> data = json.toMap();
+        return fromMap(data);
+    }
+
+    public static Object fromMap(Map<String, Object> data) {
+        if (!data.containsKey(CLASS_NAME_KEY)) {
+            throw new BadInputError(String.format("JSON object cannot be deserialized. It does not contain a class key: '%s'.", CLASS_NAME_KEY));
+        }
+
+        String className = data.get(CLASS_NAME_KEY).toString();
+        Class serialClass = null;
+        try {
+            serialClass = Class.forName(className);
+        } catch (ClassNotFoundException ex) {
+            throw new BadInputError(String.format("Could not find class for deserialization: '%s'.", className), ex);
+        }
+
+        Method constructionMethod = null;
+        try {
+            constructionMethod = serialClass.getDeclaredMethod("fromMap", Map.class);
+        } catch (NoSuchMethodException ex) {
+            throw new BadInputError(String.format("Deserialization class '%s' does not have the static method 'fromMap'.", className), ex);
+        }
+
+        Object result = null;
+        try {
+            result = constructionMethod.invoke(null, data);
+        } catch (IllegalAccessException | InvocationTargetException ex) {
+            throw new BadInputError(String.format("Failed to call deserialization method '%s.fromMap()'.", className), ex);
+        }
+
+        return result;
     }
 
     public static String normalize(String text) {

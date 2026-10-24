@@ -132,21 +132,21 @@ public class SSHLocation extends Location {
         data.put("public-key", outPublicKey);
     }
 
-    public static Object fromMap(Map<String, Object> map) {
-        String hostname = map.get("hostname").toString();
-        int port = Integer.parseInt(map.get("port").toString());
-        String username = map.get("username").toString();
-        String password = StringUtils.nullOrToString(map.get("password"));
-        String baseDir = map.get("base-dir").toString();
+    public static Object fromMap(Map<String, Object> data) {
+        String hostname = data.get("hostname").toString();
+        int port = Integer.parseInt(data.get("port").toString());
+        String username = data.get("username").toString();
+        String password = StringUtils.nullOrToString(data.get("password"));
+        String baseDir = data.get("base-dir").toString();
 
         PrivateKey privateKey = null;
-        String rawPrivateKey = StringUtils.nullOrToString(map.get("private-key"));
+        String rawPrivateKey = StringUtils.nullOrToString(data.get("private-key"));
         if (rawPrivateKey != null) {
             privateKey = (PrivateKey)CryptoUtils.base64ToKey(rawPrivateKey);
         }
 
         PublicKey publicKey = null;
-        String rawPublicKey = StringUtils.nullOrToString(map.get("public-key"));
+        String rawPublicKey = StringUtils.nullOrToString(data.get("public-key"));
         if (rawPublicKey != null) {
             publicKey = (PublicKey)CryptoUtils.base64ToKey(rawPublicKey);
         }

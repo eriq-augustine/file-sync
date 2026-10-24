@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
+import java.util.EnumSet;
 import java.util.List;
 
 public class JSONTest {
@@ -41,16 +42,71 @@ public class JSONTest {
                 new SSHLocation("host", 1234, "user", "pass", null, null, "foo"),
                 String.format(String.join("\n",
                     "{",
-                    "\"__class__\": \"%s\",",
-                    "\"base-dir\": \"foo\",",
-                    "\"hostname\": \"host\",",
-                    "\"port\": 1234,",
-                    "\"username\": \"user\",",
-                    "\"password\": \"pass\",",
-                    "\"private-key\": null,",
-                    "\"public-key\": null",
+                        "\"__class__\": \"%s\",",
+                        "\"base-dir\": \"foo\",",
+                        "\"hostname\": \"host\",",
+                        "\"port\": 1234,",
+                        "\"username\": \"user\",",
+                        "\"password\": \"pass\",",
+                        "\"private-key\": null,",
+                        "\"public-key\": null",
                     "}").trim(),
                     SSHLocation.class.getName())
+            ),
+
+            // Empty Enum Set
+            new TestCase(
+                new Sync(
+                    new EmptyLocation(),
+                    new LocalLocation(Path.of("foo"))
+                ),
+                String.format(String.join("\n",
+                    "{",
+                        "\"__class__\": \"%s\",",
+                        "\"source\": " + String.format("{\"__class__\": \"%s\", \"base-dir\": \"\"},", EmptyLocation.class.getName()),
+                        "\"dest\": " + String.format("{\"__class__\": \"%s\", \"base-dir\": \"%s\"},", LocalLocation.class.getName(), Path.of("foo").toAbsolutePath()),
+                        "\"identity-checks\": [],",
+                        "\"conflict-behavior\": \"SKIP\",",
+                    "}").trim(),
+                    Sync.class.getName())
+            ),
+
+            // Single Enum Set
+            new TestCase(
+                new Sync(
+                    new EmptyLocation(),
+                    new LocalLocation(Path.of("foo")),
+                    EnumSet.of(Sync.IdentityCheck.SIZE),
+                    Sync.ConflictBehavior.OVERWRITE
+                ),
+                String.format(String.join("\n",
+                    "{",
+                        "\"__class__\": \"%s\",",
+                        "\"source\": " + String.format("{\"__class__\": \"%s\", \"base-dir\": \"\"},", EmptyLocation.class.getName()),
+                        "\"dest\": " + String.format("{\"__class__\": \"%s\", \"base-dir\": \"%s\"},", LocalLocation.class.getName(), Path.of("foo").toAbsolutePath()),
+                        "\"identity-checks\": [\"SIZE\"],",
+                        "\"conflict-behavior\": \"OVERWRITE\",",
+                    "}").trim(),
+                    Sync.class.getName())
+            ),
+
+            // Multi-Value Enum Set
+            new TestCase(
+                new Sync(
+                    new EmptyLocation(),
+                    new LocalLocation(Path.of("foo")),
+                    EnumSet.of(Sync.IdentityCheck.MODTIME, Sync.IdentityCheck.SIZE),
+                    Sync.ConflictBehavior.OVERWRITE
+                ),
+                String.format(String.join("\n",
+                    "{",
+                        "\"__class__\": \"%s\",",
+                        "\"source\": " + String.format("{\"__class__\": \"%s\", \"base-dir\": \"\"},", EmptyLocation.class.getName()),
+                        "\"dest\": " + String.format("{\"__class__\": \"%s\", \"base-dir\": \"%s\"},", LocalLocation.class.getName(), Path.of("foo").toAbsolutePath()),
+                        "\"identity-checks\": [\"MODTIME\", \"SIZE\"],",
+                        "\"conflict-behavior\": \"OVERWRITE\",",
+                    "}").trim(),
+                    Sync.class.getName())
             )
         );
 
@@ -61,7 +117,7 @@ public class JSONTest {
                 String text = testCase.object.toJSON();
                 Assertions.assertEquals(JSON.normalize(testCase.text), text);
 
-                Location newObject = Location.fromJSON(text);
+                Object newObject = JSON.fromJSON(text);
                 Assertions.assertEquals(testCase.object, newObject);
             } catch (AssertionError ex) {
                 throw new AssertionError(String.format("Failed test case %d.", i), ex);

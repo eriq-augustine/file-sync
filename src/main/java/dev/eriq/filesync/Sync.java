@@ -4,13 +4,17 @@ import dev.eriq.filesync.Logging;
 import dev.eriq.filesync.errors.FileSyncError;
 import dev.eriq.filesync.location.Location;
 import dev.eriq.filesync.util.DirentUtils;
+import dev.eriq.filesync.util.JSON;
 
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.UUID;
@@ -19,7 +23,7 @@ import java.util.logging.Logger;
 /**
  * A sync action between two locations.
  */
-public class Sync {
+public class Sync extends JSON.MapConverter {
     private static final Logger logger = Logging.getLogger(Sync.class.getName());
 
     /**
@@ -84,6 +88,53 @@ public class Sync {
      */
     public Sync(Location source, Location dest) {
         this(source, dest, EnumSet.noneOf(IdentityCheck.class), ConflictBehavior.SKIP);
+    }
+
+    protected void serializeToMap(Map<String, Object> data) {
+        data.put("source", source.toMap());
+        data.put("dest", dest.toMap());
+
+        List<String> stringIdentityChecks = new ArrayList<String>();
+        for (IdentityCheck identityCheck : identityChecks) {
+            stringIdentityChecks.add(identityCheck.toString());
+        }
+
+        Collections.sort(stringIdentityChecks);
+        data.put("identity-checks", stringIdentityChecks);
+
+        data.put("conflict-behavior", conflictBehavior.toString());
+    }
+
+    public static Object fromMap(Map<String, Object> data) {
+        Location source = (Location)(JSON.fromMap((Map)(data.get("source"))));
+        Location dest = (Location)(JSON.fromMap((Map)(data.get("dest"))));
+
+        EnumSet<IdentityCheck> identityChecks = EnumSet.noneOf(IdentityCheck.class);
+        for (String rawCheck : (List<String>)data.get("identity-checks")) {
+            identityChecks.add(IdentityCheck.valueOf(rawCheck));
+        }
+
+        ConflictBehavior conflictBehavior = ConflictBehavior.valueOf(data.get("conflict-behavior").toString());
+
+        return new Sync(source, dest, identityChecks, conflictBehavior);
+    }
+
+    public boolean equals(Object other) {
+        if (other == this) {
+            return true;
+        }
+
+        if (other == null || !(other instanceof Sync)) {
+            return false;
+        }
+
+        Sync otherSync = (Sync)other;
+        return (
+            this.source.equals(otherSync.source)
+            && this.dest.equals(otherSync.dest)
+            && this.identityChecks.equals(otherSync.identityChecks)
+            && this.conflictBehavior.equals(otherSync.conflictBehavior)
+        );
     }
 
     /**

@@ -7,6 +7,7 @@ import dev.eriq.filesync.location.EmptyLocation;
 import dev.eriq.filesync.location.SSHLocation;
 import dev.eriq.filesync.util.CryptoUtils;
 import dev.eriq.filesync.util.DirentUtils;
+import dev.eriq.filesync.util.JSON;
 import dev.eriq.filesync.util.NetUtils;
 
 import org.junit.jupiter.api.AfterAll;
@@ -160,7 +161,7 @@ public class SSHLocationTest {
         KeyPair pair = CryptoUtils.generateRSAKeyPair();
 
         SSHLocation location = SSHLocation.withKeys("host", 1234, "user", pair.getPrivate(), pair.getPublic(), "baseDir");
-        SSHLocation newLocation = SSHLocation.fromJSON(location.toJSON());
+        SSHLocation newLocation = (SSHLocation)(JSON.fromJSON(location.toJSON()));
 
         Assertions.assertEquals(location, newLocation);
     }
