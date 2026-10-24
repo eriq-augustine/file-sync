@@ -30,6 +30,7 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
 
 /**
@@ -107,6 +108,66 @@ public class SSHLocation extends Location {
      */
     public static SSHLocation withKeys(String hostname, int port, String username, PrivateKey privateKey, PublicKey publicKey, String baseDir) {
         return new SSHLocation(hostname, port, username, null, privateKey, publicKey, baseDir);
+    }
+
+    protected void serializeToMap(Map<String, Object> data) {
+        super.serializeToMap(data);
+
+        data.put("port", port);
+        data.put("hostname", hostname);
+        data.put("username", username);
+        data.put("password", password);
+
+        String outPrivateKey = null;
+        if (privateKey != null) {
+            outPrivateKey = CryptoUtils.keyToBase64(privateKey);
+        }
+
+        String outPublicKey = null;
+        if (publicKey != null) {
+            outPublicKey = CryptoUtils.keyToBase64(publicKey);
+        }
+
+        data.put("private-key", outPrivateKey);
+        data.put("public-key", outPublicKey);
+    }
+
+    public static Object fromMap(Map<String, Object> map) {
+        String hostname = map.get("hostname").toString();
+        int port = Integer.parseInt(map.get("port").toString());
+        String username = map.get("username").toString();
+        String password = StringUtils.nullOrToString(map.get("password"));
+        String baseDir = map.get("base-dir").toString();
+
+        PrivateKey privateKey = null;
+        String rawPrivateKey = StringUtils.nullOrToString(map.get("private-key"));
+        if (rawPrivateKey != null) {
+            privateKey = (PrivateKey)CryptoUtils.base64ToKey(rawPrivateKey);
+        }
+
+        PublicKey publicKey = null;
+        String rawPublicKey = StringUtils.nullOrToString(map.get("public-key"));
+        if (rawPublicKey != null) {
+            publicKey = (PublicKey)CryptoUtils.base64ToKey(rawPublicKey);
+        }
+
+        return new SSHLocation(hostname, port, username, password, privateKey, publicKey, baseDir);
+    }
+
+    public boolean equals(Object other) {
+        if (!super.equals(other)) {
+            return false;
+        }
+
+        SSHLocation otherLocation = (SSHLocation)other;
+        return (
+            this.hostname.equals(otherLocation.hostname)
+            && (this.port == otherLocation.port)
+            && this.username.equals(otherLocation.username)
+            && StringUtils.nullOrEquals(this.password, otherLocation.password)
+            && StringUtils.nullOrEquals(this.publicKey, otherLocation.publicKey)
+            && StringUtils.nullOrEquals(this.privateKey, otherLocation.privateKey)
+        );
     }
 
     public String getHostname() {

@@ -6,6 +6,7 @@ import dev.eriq.filesync.location.Location;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * A location for testing that never has anything in it (even if requests are made to put things in it).
@@ -13,6 +14,18 @@ import java.util.List;
 public class EmptyLocation extends Location {
     public EmptyLocation() {
         super("");
+    }
+
+    public static Object fromMap(Map<String, Object> map) {
+        return new EmptyLocation();
+    }
+
+    public boolean equals(Object other) {
+        if (!super.equals(other)) {
+            return false;
+        }
+
+        return (this.getClass() == other.getClass());
     }
 
     public void open() {

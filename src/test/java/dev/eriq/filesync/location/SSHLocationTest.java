@@ -154,4 +154,14 @@ public class SSHLocationTest {
             container.stop();
         }
     }
+
+    @Test
+    public void TestSerializationWithKeys() {
+        KeyPair pair = CryptoUtils.generateRSAKeyPair();
+
+        SSHLocation location = SSHLocation.withKeys("host", 1234, "user", pair.getPrivate(), pair.getPublic(), "baseDir");
+        SSHLocation newLocation = SSHLocation.fromJSON(location.toJSON());
+
+        Assertions.assertEquals(location, newLocation);
+    }
 }

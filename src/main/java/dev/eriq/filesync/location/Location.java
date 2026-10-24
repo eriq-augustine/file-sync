@@ -2,6 +2,7 @@ package dev.eriq.filesync.location;
 
 import dev.eriq.filesync.errors.BadInputError;
 import dev.eriq.filesync.errors.IOError;
+import dev.eriq.filesync.util.JSON;
 
 import dev.eriq.filesync.location.LocalLocation;
 import dev.eriq.filesync.location.SSHLocation;
@@ -9,6 +10,7 @@ import dev.eriq.filesync.location.SSHLocation;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 
 /**
  * An abstraction of both a location where files can be synced to/from,
@@ -26,7 +28,7 @@ import java.util.List;
  * Operations are meant to be very targeted and generally do one thing.
  * This means that, for example, write operations expect the target path for a write to not exist before a write begins.
  */
-public abstract class Location implements AutoCloseable {
+public abstract class Location extends JSON.MapConverter implements AutoCloseable {
     /**
      * The directory within the location to work in.
      */
@@ -60,6 +62,23 @@ public abstract class Location implements AutoCloseable {
             default:
                 throw new BadInputError(String.format("Unknown location type ('%s') for: '%s'.", type, text));
         }
+    }
+
+    protected void serializeToMap(Map<String, Object> data) {
+        data.put("base-dir", baseDir);
+    }
+
+    public boolean equals(Object other) {
+        if (other == this) {
+            return true;
+        }
+
+        if (other == null || !(other instanceof Location)) {
+            return false;
+        }
+
+        Location otherLocation = (Location)other;
+        return this.baseDir.equals(otherLocation.baseDir);
     }
 
     /**

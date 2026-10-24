@@ -2,6 +2,7 @@ package dev.eriq.filesync.util;
 
 import dev.eriq.filesync.errors.BadInputError;
 import dev.eriq.filesync.errors.FileSyncError;
+import dev.eriq.filesync.errors.IOError;
 
 import net.schmizz.sshj.common.Buffer;
 import net.schmizz.sshj.common.KeyType;
@@ -13,7 +14,13 @@ import org.bouncycastle.jcajce.spec.OpenSSHPublicKeySpec;
 import org.bouncycastle.openssl.PEMParser;
 import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
 
+import java.io.ByteArrayOutputStream;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.StringReader;
+import java.security.Key;
 import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -36,7 +43,7 @@ public class CryptoUtils {
         try {
             PEMParser pemParser = new PEMParser(new StringReader(text));
             rawPrasedObject = pemParser.readObject();
-        } catch (java.io.IOException ex) {
+        } catch (IOException ex) {
             throw new BadInputError("Unable to parse private key.", ex);
         }
 
@@ -68,7 +75,7 @@ public class CryptoUtils {
         try {
             AsymmetricKeyParameter asymmetricKeyParameter = OpenSSHPublicKeyUtil.parsePublicKey(Base64.getDecoder().decode(content));
             keySpec = new OpenSSHPublicKeySpec(OpenSSHPublicKeyUtil.encodePublicKey(asymmetricKeyParameter));
-        } catch (java.io.IOException ex) {
+        } catch (IOException ex) {
             throw new FileSyncError("Unable to parse public key.", ex);
         }
 
@@ -144,5 +151,38 @@ public class CryptoUtils {
         keyPairGenerator.initialize(size);
 
         return keyPairGenerator.generateKeyPair();
+    }
+
+    /**
+     * Serialize a key using standard Java serialization.
+     * Sibling to base64ToKey().
+     */
+    public static String keyToBase64(Key key) {
+        try (
+            ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
+            ObjectOutputStream objectStream = new ObjectOutputStream(byteStream)
+        ) {
+            objectStream.writeObject(key);
+            byte[] bytes = byteStream.toByteArray();
+            return Base64.getEncoder().encodeToString(bytes);
+        } catch (IOException ex) {
+            throw new IOError("Failed to serialize key.", ex);
+        }
+    }
+
+    /**
+     * Deserialize a key using standard Java serialization.
+     * Sibling to keyToBase64().
+     */
+    public static Key base64ToKey(String text) {
+        try (
+            ByteArrayInputStream byteStream = new ByteArrayInputStream(Base64.getDecoder().decode(text));
+            ObjectInputStream objectStream = new ObjectInputStream(byteStream)
+        ) {
+            Object object = objectStream.readObject();
+            return (Key)object;
+        } catch (IOException | ClassNotFoundException ex) {
+            throw new IOError("Failed to deserialize key.", ex);
+        }
     }
 }

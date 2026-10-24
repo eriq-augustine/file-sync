@@ -15,6 +15,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * A location that exists on the current machine.
@@ -22,6 +23,10 @@ import java.util.List;
 public class LocalLocation extends Location {
     public LocalLocation(Path baseDir) {
         super(baseDir.toAbsolutePath().toString());
+    }
+
+    public static Object fromMap(Map<String, Object> map) {
+        return new LocalLocation(Path.of(map.get("base-dir").toString()));
     }
 
     public void open() {
