@@ -26,7 +26,7 @@ public class SSHDockerContainer {
     public static final long NICE_WAIT_MSEC = 200;
     public static final long FORCE_WAIT_MSEC = 500;
 
-    public static final int STARTUP_WAIT_MSEC = 750;
+    public static final int STARTUP_WAIT_MSEC = 1000;
 
     public static final int PULL_WAIT_MSEC = 60 * 1000;
 

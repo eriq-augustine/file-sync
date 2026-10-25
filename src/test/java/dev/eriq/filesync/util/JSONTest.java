@@ -1,6 +1,7 @@
 package dev.eriq.filesync.util;
 
 import dev.eriq.filesync.Sync;
+import dev.eriq.filesync.SyncJob;
 import dev.eriq.filesync.location.EmptyLocation;
 import dev.eriq.filesync.location.Location;
 import dev.eriq.filesync.location.LocalLocation;
@@ -63,12 +64,16 @@ public class JSONTest {
                 String.format(String.join("\n",
                     "{",
                         "\"__class__\": \"%s\",",
-                        "\"source\": " + String.format("{\"__class__\": \"%s\", \"base-dir\": \"\"},", EmptyLocation.class.getName()),
-                        "\"dest\": " + String.format("{\"__class__\": \"%s\", \"base-dir\": \"%s\"},", LocalLocation.class.getName(), Path.of("foo").toAbsolutePath()),
+                        "\"source\": {\"__class__\": \"%s\", \"base-dir\": \"\"},",
+                        "\"dest\": {\"__class__\": \"%s\", \"base-dir\": \"%s\"},",
                         "\"identity-checks\": [],",
                         "\"conflict-behavior\": \"SKIP\",",
                     "}").trim(),
-                    Sync.class.getName())
+                    Sync.class.getName(),
+                    EmptyLocation.class.getName(),
+                    LocalLocation.class.getName(),
+                    Path.of("foo").toAbsolutePath()
+                )
             ),
 
             // Single Enum Set
@@ -82,12 +87,16 @@ public class JSONTest {
                 String.format(String.join("\n",
                     "{",
                         "\"__class__\": \"%s\",",
-                        "\"source\": " + String.format("{\"__class__\": \"%s\", \"base-dir\": \"\"},", EmptyLocation.class.getName()),
-                        "\"dest\": " + String.format("{\"__class__\": \"%s\", \"base-dir\": \"%s\"},", LocalLocation.class.getName(), Path.of("foo").toAbsolutePath()),
+                        "\"source\": {\"__class__\": \"%s\", \"base-dir\": \"\"},",
+                        "\"dest\": {\"__class__\": \"%s\", \"base-dir\": \"%s\"},",
                         "\"identity-checks\": [\"SIZE\"],",
                         "\"conflict-behavior\": \"OVERWRITE\",",
                     "}").trim(),
-                    Sync.class.getName())
+                    Sync.class.getName(),
+                    EmptyLocation.class.getName(),
+                    LocalLocation.class.getName(),
+                    Path.of("foo").toAbsolutePath()
+                )
             ),
 
             // Multi-Value Enum Set
@@ -101,12 +110,44 @@ public class JSONTest {
                 String.format(String.join("\n",
                     "{",
                         "\"__class__\": \"%s\",",
-                        "\"source\": " + String.format("{\"__class__\": \"%s\", \"base-dir\": \"\"},", EmptyLocation.class.getName()),
-                        "\"dest\": " + String.format("{\"__class__\": \"%s\", \"base-dir\": \"%s\"},", LocalLocation.class.getName(), Path.of("foo").toAbsolutePath()),
+                        "\"source\": {\"__class__\": \"%s\", \"base-dir\": \"\"},",
+                        "\"dest\": {\"__class__\": \"%s\", \"base-dir\": \"%s\"},",
                         "\"identity-checks\": [\"MODTIME\", \"SIZE\"],",
                         "\"conflict-behavior\": \"OVERWRITE\",",
                     "}").trim(),
-                    Sync.class.getName())
+                    Sync.class.getName(),
+                    EmptyLocation.class.getName(),
+                    LocalLocation.class.getName(),
+                    Path.of("foo").toAbsolutePath()
+                )
+            ),
+
+            new TestCase(
+                new SyncJob(
+                    "0 4 * * *",
+                    new Sync(
+                        new EmptyLocation(),
+                        new LocalLocation(Path.of("foo"))
+                    )
+                ),
+                String.format(String.join("\n",
+                    "{",
+                        "\"__class__\": \"%s\",",
+                        "\"schedule\": \"0 4 * * *\",",
+                        "\"sync\": {",
+                            "\"__class__\": \"%s\",",
+                            "\"source\": {\"__class__\": \"%s\", \"base-dir\": \"\"},",
+                            "\"dest\": {\"__class__\": \"%s\", \"base-dir\": \"%s\"},",
+                            "\"identity-checks\": [],",
+                            "\"conflict-behavior\": \"SKIP\",",
+                        "}",
+                    "}").trim(),
+                    SyncJob.class.getName(),
+                    Sync.class.getName(),
+                    EmptyLocation.class.getName(),
+                    LocalLocation.class.getName(),
+                    Path.of("foo").toAbsolutePath()
+                )
             )
         );
 
