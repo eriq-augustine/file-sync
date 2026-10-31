@@ -13,12 +13,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Set Up JDK 12
+      - name: Set Up JDK 17
         uses: actions/setup-java@v6
         with:
-          java-version: 12
+          java-version: 17
           distribution: oracle-openjdk
           cache: maven
 
       - name: Build
-        run: mvn clean verify
+        run: |
+            cd lib
+            mvn clean verify
