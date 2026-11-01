@@ -145,6 +145,13 @@
                                     </excludes>
                                 </filter>
                             </filters>
+                            <relocations>
+                                <!-- Cordova uses an older org.json. -->
+                                <relocation>
+                                    <pattern>org.json</pattern>
+                                    <shadedPattern>dev.eriq.filesync.shade.org.json</shadedPattern>
+                                </relocation>
+                            </relocations>
                         </configuration>
                     </execution>
                 </executions>
