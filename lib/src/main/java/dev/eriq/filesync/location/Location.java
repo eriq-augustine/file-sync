@@ -1,5 +1,6 @@
 package dev.eriq.filesync.location;
 
+import dev.eriq.filesync.Logging;
 import dev.eriq.filesync.errors.BadInputError;
 import dev.eriq.filesync.errors.IOError;
 import dev.eriq.filesync.util.JSON;
@@ -11,6 +12,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Logger;
 
 /**
  * An abstraction of both a location where files can be synced to/from,
@@ -29,6 +31,8 @@ import java.util.Map;
  * This means that, for example, write operations expect the target path for a write to not exist before a write begins.
  */
 public abstract class Location extends JSON.MapConverter implements AutoCloseable {
+    private static final Logger logger = Logging.getLogger(Location.class.getName());
+
     /**
      * The directory within the location to work in.
      */
@@ -79,6 +83,30 @@ public abstract class Location extends JSON.MapConverter implements AutoCloseabl
 
         Location otherLocation = (Location)other;
         return this.baseDir.equals(otherLocation.baseDir);
+    }
+
+    /**
+     * Test that this location is valid, and can open/close.
+     * Return null on success, and an error message on failure.
+     */
+    public String test() {
+        try {
+            open();
+        } catch (Exception ex) {
+            String message = String.format("Failed to open location: '%s'.", ex.getMessage());
+            logger.log(java.util.logging.Level.FINE, message, ex);
+            return message;
+        }
+
+        try {
+            close();
+        } catch (Exception ex) {
+            String message = String.format("Failed to close location: '%s'.", ex.getMessage());
+            logger.log(java.util.logging.Level.FINE, message, ex);
+            return message;
+        }
+
+        return null;
     }
 
     /**
