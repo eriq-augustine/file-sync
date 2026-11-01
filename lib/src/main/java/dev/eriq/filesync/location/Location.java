@@ -3,6 +3,7 @@ package dev.eriq.filesync.location;
 import dev.eriq.filesync.Logging;
 import dev.eriq.filesync.errors.BadInputError;
 import dev.eriq.filesync.errors.IOError;
+import dev.eriq.filesync.util.Errors;
 import dev.eriq.filesync.util.JSON;
 
 import dev.eriq.filesync.location.LocalLocation;
@@ -94,7 +95,7 @@ public abstract class Location extends JSON.MapConverter implements AutoCloseabl
             open();
         } catch (Exception ex) {
             String message = String.format("Failed to open location: '%s'.", ex.getMessage());
-            logger.log(java.util.logging.Level.FINE, message, ex);
+            logger.warning(message + "\n" + Errors.toLogString(ex));
             return message;
         }
 
@@ -102,7 +103,7 @@ public abstract class Location extends JSON.MapConverter implements AutoCloseabl
             close();
         } catch (Exception ex) {
             String message = String.format("Failed to close location: '%s'.", ex.getMessage());
-            logger.log(java.util.logging.Level.FINE, message, ex);
+            logger.warning(message + "\n" + Errors.toLogString(ex));
             return message;
         }
 
