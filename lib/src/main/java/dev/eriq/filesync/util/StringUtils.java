@@ -5,8 +5,13 @@ public class StringUtils {
      * Return null if the string is either null or empty,
      * otherwise return the given string.
      */
-    public static String nullEmptyString(String text) {
-        if ((text == null) || (text.length() == 0)) {
+    public static String nullEmptyString(Object object) {
+        if (object == null) {
+            return null;
+        }
+
+        String text = object.toString();
+        if (text.length() == 0) {
             return null;
         }
 
