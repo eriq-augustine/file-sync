@@ -4,7 +4,6 @@ import dev.eriq.filesync.Logging;
 import dev.eriq.filesync.errors.FileSyncError;
 import dev.eriq.filesync.errors.IOError;
 import dev.eriq.filesync.location.SSHLocation;
-import dev.eriq.filesync.util.CryptoUtils;
 
 import com.sun.security.auth.module.UnixSystem;
 import java.io.IOException;
@@ -35,16 +34,22 @@ public class SSHDockerContainer {
 
     private SSHLocation location;
     private Path mountDir;
+    private String authorizedPublicKey;
 
     private Process containerProcess;
 
-    public SSHDockerContainer(SSHLocation location, Path mountDir) {
+    public SSHDockerContainer(SSHLocation location, Path mountDir, String authorizedPublicKey) {
         this.location = location;
         this.mountDir = mountDir;
+        this.authorizedPublicKey = authorizedPublicKey;
 
         containerProcess = null;
 
         containers.add(this);
+    }
+
+    public SSHDockerContainer(SSHLocation location, Path mountDir) {
+        this(location, mountDir, null);
     }
 
     public void stop() {
@@ -85,9 +90,9 @@ public class SSHDockerContainer {
             command.add("USER_PASSWORD=" + location.getPassword());
         }
 
-        if (location.getPublicKey() != null) {
+        if (authorizedPublicKey != null) {
             command.add("--env");
-            command.add("PUBLIC_KEY=" + CryptoUtils.keyToOpenSSH(location.getPublicKey(), location.getUsername()));
+            command.add("PUBLIC_KEY=" + authorizedPublicKey);
         }
 
         command.add(IMAGE);

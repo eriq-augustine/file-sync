@@ -1,43 +1,24 @@
 package dev.eriq.filesync.location;
 
-import dev.eriq.filesync.Logging;
 import dev.eriq.filesync.SSHDockerContainer;
 import dev.eriq.filesync.Sync;
 import dev.eriq.filesync.location.EmptyLocation;
 import dev.eriq.filesync.location.SSHLocation;
-import dev.eriq.filesync.util.CryptoUtils;
 import dev.eriq.filesync.util.DirentUtils;
-import dev.eriq.filesync.util.JSON;
 import dev.eriq.filesync.util.NetUtils;
 
 import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-import java.io.IOException;
 import java.nio.file.Path;
-import java.security.KeyPair;
 
 public class SSHLocationTest {
     @AfterAll
     public static void tearDown() {
         SSHDockerContainer.stopAll();
         DirentUtils.removeTempDirs();
-    }
-
-    @Test
-    public void TestKeyGeneration() {
-        KeyPair pair = CryptoUtils.generateRSAKeyPair();
-
-        int minLength = 1620;
-        int actualLength = CryptoUtils.keyToText(pair.getPrivate()).length();
-        Assertions.assertTrue((minLength <= actualLength), String.format("private key length (%d) > %d", actualLength, minLength));
-
-        minLength = 390;
-        actualLength = CryptoUtils.keyToText(pair.getPublic()).length();
-        Assertions.assertTrue((minLength <= actualLength), String.format("public key length (%d) > %d", actualLength, minLength));
     }
 
     @Test
@@ -64,30 +45,6 @@ public class SSHLocationTest {
 
     @Test
     public void TestAuthKey(@TempDir Path tempDir) {
-        Assumptions.assumeTrue(SSHDockerContainer.isAvailable(), "Docker is not available");
-
-        int port = NetUtils.findAvailablePort();
-        KeyPair pair = CryptoUtils.generateRSAKeyPair();
-
-        SSHLocation location = SSHLocation.withKeys(
-                "localhost", port,
-                "testuser",
-                pair.getPrivate(), pair.getPublic(),
-                SSHDockerContainer.MOUNT_DIR);
-
-        SSHDockerContainer container = new SSHDockerContainer(location, tempDir);
-
-        try {
-            container.start();
-            Sync sync = new Sync(new EmptyLocation(), location);
-            sync.sync();
-        } finally {
-            container.stop();
-        }
-    }
-
-    @Test
-    public void TestAuthKeyString(@TempDir Path tempDir) {
         Assumptions.assumeTrue(SSHDockerContainer.isAvailable(), "Docker is not available");
 
         int port = NetUtils.findAvailablePort();
@@ -145,7 +102,7 @@ public class SSHLocationTest {
                 privateKey, publicKey,
                 SSHDockerContainer.MOUNT_DIR);
 
-        SSHDockerContainer container = new SSHDockerContainer(location, tempDir);
+        SSHDockerContainer container = new SSHDockerContainer(location, tempDir, publicKey);
 
         try {
             container.start();
@@ -154,15 +111,5 @@ public class SSHLocationTest {
         } finally {
             container.stop();
         }
-    }
-
-    @Test
-    public void TestSerializationWithKeys() {
-        KeyPair pair = CryptoUtils.generateRSAKeyPair();
-
-        SSHLocation location = SSHLocation.withKeys("host", 1234, "user", pair.getPrivate(), pair.getPublic(), "baseDir");
-        SSHLocation newLocation = (SSHLocation)(JSON.fromJSON(location.toJSON()));
-
-        Assertions.assertEquals(location, newLocation);
     }
 }

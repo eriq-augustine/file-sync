@@ -5,32 +5,25 @@ import dev.eriq.filesync.errors.AuthError;
 import dev.eriq.filesync.errors.BadInputError;
 import dev.eriq.filesync.errors.IOError;
 import dev.eriq.filesync.location.Location;
-import dev.eriq.filesync.util.CryptoUtils;
+import dev.eriq.filesync.util.DirentUtils;
 import dev.eriq.filesync.util.StringUtils;
 
-import net.schmizz.sshj.SSHClient;
-import net.schmizz.sshj.sftp.FileAttributes;
-import net.schmizz.sshj.sftp.FileMode;
-import net.schmizz.sshj.sftp.SFTPClient;
-import net.schmizz.sshj.sftp.RemoteResourceInfo;
-import net.schmizz.sshj.transport.verification.PromiscuousVerifier;
-import net.schmizz.sshj.userauth.UserAuthException;
-import net.schmizz.sshj.userauth.keyprovider.KeyPairWrapper;
-import net.schmizz.sshj.xfer.FileSystemFile;
+import com.jcraft.jsch.Channel;
+import com.jcraft.jsch.ChannelSftp;
+import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.JSchException;
+import com.jcraft.jsch.Session;
+import com.jcraft.jsch.SftpATTRS;
+import com.jcraft.jsch.SftpException;
 
-import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.LinkOption;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
-import java.security.PrivateKey;
-import java.security.PublicKey;
+import java.nio.file.attribute.FileTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Vector;
 import java.util.logging.Logger;
 
 /**
@@ -53,18 +46,18 @@ public class SSHLocation extends Location {
     private String username;
 
     private String password;
-    private PrivateKey privateKey;
-    private PublicKey publicKey;
+    private String privateKey;
+    private String publicKey;
 
-    private SSHClient sshClient;
-    private SFTPClient sftpClient;
+    private Session sshSession;
+    private ChannelSftp sftpChannel;
 
     /**
      * Create an SSHLocation.
      *
      * Either a password or (private and public keys) are required.
      */
-    public SSHLocation(String hostname, int port, String username, String password, PrivateKey privateKey, PublicKey publicKey, String baseDir) {
+    public SSHLocation(String hostname, int port, String username, String password, String privateKey, String publicKey, String baseDir) {
         super(baseDir);
 
         username = StringUtils.nullEmptyString(username);
@@ -73,6 +66,13 @@ public class SSHLocation extends Location {
         }
 
         password = StringUtils.nullEmptyString(password);
+        privateKey = StringUtils.nullEmptyString(privateKey);
+        publicKey = StringUtils.nullEmptyString(publicKey);
+
+        if (((privateKey == null) && (publicKey != null)) || ((privateKey != null) && (publicKey == null))) {
+            throw new BadInputError("If either keys are supplied, both must be present.");
+        }
+
         if ((password == null) && ((privateKey == null) || (publicKey == null))) {
             throw new BadInputError("Insufficient authentication information provided. Either a password or a private/public key pair are required.");
         }
@@ -85,8 +85,8 @@ public class SSHLocation extends Location {
         this.privateKey = privateKey;
         this.publicKey = publicKey;
 
-        sshClient = null;
-        sftpClient = null;
+        sshSession = null;
+        sftpChannel = null;
     }
 
     /**
@@ -97,16 +97,9 @@ public class SSHLocation extends Location {
     }
 
     /**
-     * Convenience constructor when using key authentication from string keys.
-     */
-    public static SSHLocation withKeys(String hostname, int port, String username, String privateKey, String publicKey, String baseDir) {
-        return new SSHLocation(hostname, port, username, null, CryptoUtils.parsePrivateKey(privateKey), CryptoUtils.parsePublicKey(publicKey), baseDir);
-    }
-
-    /**
      * Convenience constructor when using key authentication from keys.
      */
-    public static SSHLocation withKeys(String hostname, int port, String username, PrivateKey privateKey, PublicKey publicKey, String baseDir) {
+    public static SSHLocation withKeys(String hostname, int port, String username, String privateKey, String publicKey, String baseDir) {
         return new SSHLocation(hostname, port, username, null, privateKey, publicKey, baseDir);
     }
 
@@ -117,19 +110,8 @@ public class SSHLocation extends Location {
         data.put("hostname", hostname);
         data.put("username", username);
         data.put("password", password);
-
-        String outPrivateKey = null;
-        if (privateKey != null) {
-            outPrivateKey = CryptoUtils.keyToBase64(privateKey);
-        }
-
-        String outPublicKey = null;
-        if (publicKey != null) {
-            outPublicKey = CryptoUtils.keyToBase64(publicKey);
-        }
-
-        data.put("private-key", outPrivateKey);
-        data.put("public-key", outPublicKey);
+        data.put("private-key", privateKey);
+        data.put("public-key", publicKey);
     }
 
     public static Object fromMap(Map<String, Object> data) {
@@ -137,19 +119,9 @@ public class SSHLocation extends Location {
         int port = Integer.parseInt(data.get("port").toString());
         String username = data.get("username").toString();
         String password = StringUtils.nullOrToString(data.get("password"));
+        String privateKey = StringUtils.nullOrToString(data.get("private-key"));
+        String publicKey = StringUtils.nullOrToString(data.get("public-key"));
         String baseDir = data.get("base-dir").toString();
-
-        PrivateKey privateKey = null;
-        String rawPrivateKey = StringUtils.nullOrToString(data.get("private-key"));
-        if (rawPrivateKey != null) {
-            privateKey = (PrivateKey)CryptoUtils.base64ToKey(rawPrivateKey);
-        }
-
-        PublicKey publicKey = null;
-        String rawPublicKey = StringUtils.nullOrToString(data.get("public-key"));
-        if (rawPublicKey != null) {
-            publicKey = (PublicKey)CryptoUtils.base64ToKey(rawPublicKey);
-        }
 
         return new SSHLocation(hostname, port, username, password, privateKey, publicKey, baseDir);
     }
@@ -186,11 +158,11 @@ public class SSHLocation extends Location {
         return password;
     }
 
-    public PrivateKey getPrivateKey() {
+    public String getPrivateKey() {
         return privateKey;
     }
 
-    public PublicKey getPublicKey() {
+    public String getPublicKey() {
         return publicKey;
     }
 
@@ -234,65 +206,61 @@ public class SSHLocation extends Location {
     public void open() {
         try {
             _open();
-        } catch (IOException ex) {
+        } catch (JSchException ex) {
             throw new IOError(String.format("Failed to connect to remote SSH server: '%s:%d'.", hostname, port), ex);
         }
     }
 
-    private void _open() throws IOException {
+    private void _open() throws JSchException {
         // Check for already opened.
-        if (sshClient != null) {
+        if (sshSession != null) {
             return;
         }
 
-        sshClient = new SSHClient();
+        // Allow all hosts.
+        JSch.setConfig("StrictHostKeyChecking", "no");
 
-        // Trust all hosts.
-        sshClient.addHostKeyVerifier(new PromiscuousVerifier());
+        JSch jsch = new JSch();
 
-        sshClient.connect(hostname, port);
-
-        if (password != null) {
-            try {
-                sshClient.authPassword(username, password);
-            } catch (UserAuthException ex) {
-                throw new AuthError(String.format("Failed to authenticate user '%s' with password.", username), ex);
-            }
-        } else {
-            KeyPairWrapper keys = new KeyPairWrapper(publicKey, privateKey);
-
-            try {
-                sshClient.authPublickey(username, keys);
-            } catch (UserAuthException ex) {
-                throw new AuthError(String.format("Failed to authenticate user '%s' with keys.", username), ex);
-            }
+        if (privateKey != null) {
+            jsch.addIdentity(username, privateKey.getBytes(), publicKey.getBytes(), null);
         }
 
-        sftpClient = sshClient.newSFTPClient();
+        sshSession = jsch.getSession(username, hostname, port);
+
+        if (password != null) {
+            sshSession.setPassword(password);
+        }
+
+        sshSession.connect();
+
+        Channel channel = sshSession.openChannel("sftp");
+        channel.connect();
+        sftpChannel = (ChannelSftp)channel;
     }
 
     public void close() {
         try {
             _close();
-        } catch (IOException ex) {
-            logger.log(java.util.logging.Level.WARNING, String.format("Failed to close connection to remote SSH server: '%s:%d'.", hostname, port), ex);
+        } catch (JSchException ex) {
+            throw new IOError(String.format("Failed to close connection to remote SSH server: '%s:%d'.", hostname, port), ex);
         }
     }
 
-    public void _close() throws IOException {
+    public void _close() throws JSchException {
         // Check for already closed.
-        if (sshClient == null) {
+        if (sshSession == null) {
             return;
         }
 
-        if (sftpClient != null) {
-            sftpClient.close();
-            sftpClient = null;
+        if (sftpChannel != null) {
+            sftpChannel.disconnect();
+            sftpChannel = null;
         }
 
-        if (sshClient != null) {
-            sshClient.disconnect();
-            sshClient = null;
+        if (sshSession != null) {
+            sshSession.disconnect();
+            sshSession = null;
         }
     }
 
@@ -303,31 +271,32 @@ public class SSHLocation extends Location {
     public List<Location.DirentInfo> listDir(String relpath) {
         String path = joinPath(baseDir, relpath);
 
-        List<RemoteResourceInfo> rawDirents = null;
+        Vector<ChannelSftp.LsEntry> rawDirents = null;
         try {
-            rawDirents = sftpClient.ls(path);
-        } catch (IOException ex) {
+            rawDirents = sftpChannel.ls(path);
+        } catch (SftpException ex) {
             throw new IOError(String.format("Failed to list remote directory: '%s'.", path), ex);
         }
 
         List<Location.DirentInfo> dirents = new ArrayList<Location.DirentInfo>();
-        for (RemoteResourceInfo dirent : rawDirents) {
-            FileAttributes attributes = dirent.getAttributes();
-
-            Location.DirentInfo.Type type = Location.DirentInfo.Type.OTHER;
-            switch (attributes.getType()) {
-                case DIRECTORY:
-                    type = Location.DirentInfo.Type.DIR;
-                    break;
-                case REGULAR:
-                    type = Location.DirentInfo.Type.FILE;
-                    break;
-                case SYMLINK:
-                    type = Location.DirentInfo.Type.SYMLINK;
-                    break;
+        for (ChannelSftp.LsEntry dirent : rawDirents) {
+            String name = dirent.getFilename();
+            if (name.equals(".") || name.equals("..")) {
+                continue;
             }
 
-            dirents.add(new Location.DirentInfo(dirent.getName(), type, attributes.getSize(), attributes.getMtime()));
+            SftpATTRS attributes = dirent.getAttrs();
+
+            Location.DirentInfo.Type type = Location.DirentInfo.Type.OTHER;
+            if (attributes.isLink()) {
+                type = Location.DirentInfo.Type.SYMLINK;
+            } else if (attributes.isDir()) {
+                type = Location.DirentInfo.Type.DIR;
+            } else if (attributes.isReg()) {
+                type = Location.DirentInfo.Type.FILE;
+            }
+
+            dirents.add(new Location.DirentInfo(name, type, attributes.getSize(), attributes.getMTime() * 1000));
         }
 
         return dirents;
@@ -337,8 +306,8 @@ public class SSHLocation extends Location {
         String path = joinPath(baseDir, relpath);
 
         try {
-            sftpClient.mkdirs(path);
-        } catch (IOException ex) {
+            sftpChannel.mkdir(path);
+        } catch (SftpException ex) {
             throw new IOError(String.format("Failed to make remote directory: '%s'.", path), ex);
         }
     }
@@ -347,8 +316,8 @@ public class SSHLocation extends Location {
         String path = joinPath(baseDir, relpath);
 
         try {
-            sftpClient.rmdir(path);
-        } catch (IOException ex) {
+            sftpChannel.rmdir(path);
+        } catch (SftpException ex) {
             throw new IOError(String.format("Failed to remove remote directory: '%s'.", path), ex);
         }
     }
@@ -357,8 +326,10 @@ public class SSHLocation extends Location {
         String path = joinPath(baseDir, relpath);
 
         try {
-            sftpClient.get(path, new FileSystemFile(tempPath.toString()));
-        } catch (IOException ex) {
+            sftpChannel.get(path, tempPath.toString());
+            SftpATTRS attrs = sftpChannel.lstat(path);
+            Files.setLastModifiedTime(tempPath, FileTime.fromMillis(attrs.getMTime() * 1000));
+        } catch (SftpException | IOException ex) {
             throw new IOError(String.format("Failed to fetch remote file: '%s'.", path), ex);
         }
     }
@@ -367,8 +338,9 @@ public class SSHLocation extends Location {
         String path = joinPath(baseDir, relpath);
 
         try {
-            sftpClient.put(new FileSystemFile(tempPath.toString()), path);
-        } catch (IOException ex) {
+            sftpChannel.put(tempPath.toString(), path);
+            sftpChannel.setMtime(path, (int)(DirentUtils.getModTime(tempPath) / 1000));
+        } catch (SftpException ex) {
             throw new IOError(String.format("Failed to put remote file: '%s'.", path), ex);
         }
     }
@@ -377,8 +349,8 @@ public class SSHLocation extends Location {
         String path = joinPath(baseDir, relpath);
 
         try {
-            sftpClient.rm(path);
-        } catch (IOException ex) {
+            sftpChannel.rm(path);
+        } catch (SftpException ex) {
             throw new IOError(String.format("Failed to remove remote file: '%s'.", path), ex);
         }
     }
@@ -387,8 +359,8 @@ public class SSHLocation extends Location {
         String path = joinPath(baseDir, relpath);
 
         try {
-            return sftpClient.readlink(path);
-        } catch (IOException ex) {
+            return sftpChannel.readlink(path);
+        } catch (SftpException ex) {
             throw new IOError(String.format("Failed to read remote symlink: '%s'.", path), ex);
         }
     }
@@ -397,10 +369,8 @@ public class SSHLocation extends Location {
         String path = joinPath(baseDir, relpath);
 
         try {
-            // Note that the order is a bit off because of an old upstream bug.
-            // See: https://github.com/hierynomus/sshj/issues/144
-            sftpClient.symlink(target, path);
-        } catch (IOException ex) {
+            sftpChannel.symlink(target, path);
+        } catch (SftpException ex) {
             throw new IOError(String.format("Failed to create remote symlink: '%s'.", path), ex);
         }
     }
@@ -409,8 +379,8 @@ public class SSHLocation extends Location {
         String path = joinPath(baseDir, relpath);
 
         try {
-            sftpClient.rm(path);
-        } catch (IOException ex) {
+            sftpChannel.rm(path);
+        } catch (SftpException ex) {
             throw new IOError(String.format("Failed to remove remote symlink: '%s'.", path), ex);
         }
     }

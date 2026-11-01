@@ -165,7 +165,7 @@ public class Sync extends JSON.MapConverter {
             try {
                 syncDir(nextDir, fringe);
             } catch (FileSyncError ex) {
-                logger.log(java.util.logging.Level.WARNING, String.format("Failed to sync directory: '%s'.", nextDir), ex);
+                logger.warning(String.format("Failed to sync directory: '%s'.\n%s", nextDir, ex.toLogString()));
             }
         }
     }
@@ -188,7 +188,7 @@ public class Sync extends JSON.MapConverter {
             try {
                 syncDir(dirent, direntRelpath, destDirents, fringe);
             } catch (FileSyncError ex) {
-                logger.log(java.util.logging.Level.WARNING, String.format("Failed to sync dirent: '%s'.", direntRelpath), ex);
+                logger.warning(String.format("Failed to sync dirent: '%s'.\n%s", direntRelpath, ex.toLogString()));
             }
         }
     }

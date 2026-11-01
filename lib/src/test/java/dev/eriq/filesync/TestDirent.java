@@ -22,8 +22,8 @@ public abstract class TestDirent {
     }
 
     /**
-        * Set the mod time and return this.
-        */
+     * Set the mod time and return this.
+     */
     public TestDirent setModTime(long modTimeMS) {
         this.modTimeMS = modTimeMS;
         return this;
@@ -34,9 +34,9 @@ public abstract class TestDirent {
     }
 
     /**
-        * Check if this dirent exists in the base dir.
-        * Will return an error message on a bad match, and null on a successful match.
-        */
+      * Check if this dirent exists in the base dir.
+      * Will return an error message on a bad match, and null on a successful match.
+      */
     public String match(Path baseDir) {
         Path path = getPath(baseDir);
 
