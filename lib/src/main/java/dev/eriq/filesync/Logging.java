@@ -67,6 +67,10 @@ public class Logging {
         setLevel("dev.eriq.filesync", level);
     }
 
+    public static void setDebugLevel() {
+        setLevel(Level.FINER);
+    }
+
     /**
      * Set the respective default level for all the logger we know about in DEFAULT_LOGGING_LEVELS.
      */
