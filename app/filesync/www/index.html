@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang='en-US'>
+    <head>
+        <!-- BEGIN Cordova -->
+
+        <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: https://ssl.gstatic.com 'unsafe-eval'; style-src 'self' 'unsafe-inline'; media-src *; img-src 'self' data: content:;">
+        <meta name="format-detection" content="telephone=no">
+        <meta name="msapplication-tap-highlight" content="no">
+
+        <script src="cordova.js"></script>
+
+        <link rel="stylesheet" href="css/cordova.css">
+
+        <!-- END Cordova -->
+
+        <meta charset='utf-8'/>
+        <meta name="viewport" content="initial-scale=1, width=device-width, viewport-fit=cover">
+        <meta name='color-scheme' content='dark light'>
+
+        <link rel="icon" href="vendor/edq/images/favicon.png">
+
+        <link rel='stylesheet' type='text/css' href='vendor/edq/css/edq.css'>
+        <link rel='stylesheet' type='text/css' href='css/style.css'>
+
+        <script type='module' src='js/main.js'></script>
+
+        <title>File Sync</title>
+    </head>
+    <body>
+        <div class='page theme-primary'>
+            <div class='header'>
+                <div class='site-header theme-accent'>
+                    <div class='site-branding'>
+                        <span>File Sync</span>
+                    </div>
+                    <nav class='site-nav'>
+                        <div class='nav-item' data-target='home'>
+                            <a href='#'>
+                                Home
+                            </a>
+                        </div>
+                        <div class='nav-item' data-target='locations'>
+                            <a href='#locations'>
+                                Locations
+                            </a>
+                        </div>
+                        <div class='nav-item' data-target='jobs'>
+                            <a href='#jobs'>
+                                Jobs
+                            </a>
+                        </div>
+                        <div class='nav-item' data-target='logs'>
+                            <a href='#logs'>
+                                Logs
+                            </a>
+                        </div>
+                    </nav>
+                    <div class='site-context'>
+                        <div class='brightmode-toggle'>
+                            <icon class='icon-placeholder selector lightmode lightmode-only' name='moon'>Toggle Light Mode</icon>
+                            <icon class='icon-placeholder selector darkmode darkmode-only' name='sun'>Toggle Dark Mode</icon>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class='page-content'>
+            </div>
+
+            <div class='footer theme-accent'>
+                <div class='left'>
+                    <span>©2026 Eriq Augustine</span>
+                </div>
+                <div class='middle'>
+                </div>
+                <div class='right'>
+                    <a href='https://github.com/eriq-augustine/file-sync' aria-label='See our work on GitHub'>
+                        <icon class='icon-placeholder' name='github'>See our work on GitHub</icon>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

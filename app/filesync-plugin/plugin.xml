@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
+        id="filesync-app"
+        version="0.0.0">
+    <name>File Sync Plugin</name>
+    <description>Native code and dependencies for the File Sync app.</description>
+    <license>MIT</license>
+    <keywords>cordova,plugin,filesync</keywords>
+
+    <js-module src="www/api.js" name="FileSync">
+        <clobbers target="FileSync" />
+    </js-module>
+
+    <platform name="android">
+        <config-file target="res/xml/config.xml" parent="/*">
+            <feature name="FileSyncPlugin">
+                <param name="android-package" value="dev.eriq.filesync.plugin.FileSyncPlugin"/>
+            </feature>
+        </config-file>
+
+        <source-file src="src/android/FileSyncPlugin.java" target-dir="src/dev/eriq/filesync/plugin"/>
+        <lib-file src="src/android/vendor/filesync-uber.jar"/>
+    </platform>
+</plugin>

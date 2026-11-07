@@ -1,0 +1,15 @@
+.display-header {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+
+    font-size: var(--font-size-normal);
+}
+
+.display-header label {
+    margin: auto 0;
+}
+
+.edit-location fieldset {
+    padding-top: 1em;
+}

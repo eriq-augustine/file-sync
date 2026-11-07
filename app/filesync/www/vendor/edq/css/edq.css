@@ -1,0 +1,1371 @@
+/* EduLinq Web Base v0.0.1. https://github.com/edulinq/web-base */
+
+/* EduLinq Style Constants */
+
+/**
+ * EduLinq web projects typically use a two pallet color scheme with support for light and dark modes.
+ * The colors pallets are ordered as: `primary` and  `secondary`.
+ * If more colors are needed, these should be cycled through again.
+ * Accents can be used as small splashes of color on their respective background.
+ */
+
+:root {
+    /* Color Scheme */
+
+    --color-dark-primary-bg: #2c2934;
+    --color-dark-primary-text: #dcdcfb;
+    --color-dark-primary-link: #7aaaff;
+    --color-dark-primary-outline: #4d485b;
+    --color-dark-primary-accent-bg: #8672e7;
+    --color-dark-primary-accent-text: var(--color-dark-primary-text);
+    --color-dark-primary-accent-link: #8db6ff;
+    --color-dark-primary-accent-outline: #514395;
+    --color-dark-primary-error-text: #f40055;
+
+    --color-dark-secondary-bg: #171323;
+    --color-dark-secondary-text: var(--color-dark-primary-text);
+    --color-dark-secondary-link: var(--color-dark-primary-link);
+    --color-dark-secondary-outline: #0c0814;
+    --color-dark-secondary-accent-bg: #b00078;
+    --color-dark-secondary-accent-text: var(--color-dark-secondary-text);
+    --color-dark-secondary-accent-link: var(--color-dark-primary-accent-link);
+    --color-dark-secondary-accent-outline: #842666;
+    --color-dark-secondary-error-text: var(--color-dark-primary-error-text);
+
+    --color-light-primary-bg: #dcdcfb;
+    --color-light-primary-text: #3b3b40;
+    --color-light-primary-link: #0044cc;
+    --color-light-primary-outline: #9287a9;
+    --color-light-primary-accent-bg: var(--color-dark-primary-accent-bg);
+    --color-light-primary-accent-text: var(--color-light-primary-text);
+    --color-light-primary-accent-link: #0b51dc;
+    --color-light-primary-accent-outline: var(--color-dark-primary-accent-outline);
+    --color-light-primary-error-text: var(--color-dark-primary-error-text);
+
+    --color-light-secondary-bg: #ebebff;
+    --color-light-secondary-text: var(--color-light-primary-text);
+    --color-light-secondary-link: var(--color-light-primary-link);
+    --color-light-secondary-outline: #524a63;
+    --color-light-secondary-accent-bg: #87d6f2;
+    --color-light-secondary-accent-text: var(--color-light-primary-accent-text);
+    --color-light-secondary-accent-link: var(--color-light-primary-accent-link);
+    --color-light-secondary-accent-outline: #62a6be;
+    --color-light-secondary-error-text: var(--color-light-primary-error-text);
+
+    /**
+     * Brightness Mode Variables.
+     * These will be set depending on the active brightness (light/dark) mode.
+     */
+    --color-primary-bg: inherit;
+    --color-primary-text: inherit;
+    --color-primary-link: inherit;
+    --color-primary-outline: inherit;
+    --color-primary-accent-bg: inherit;
+    --color-primary-accent-text: inherit;
+    --color-primary-accent-link: inherit;
+    --color-primary-accent-outline: inherit;
+    --color-primary-error-text: inherit;
+
+    --color-secondary-bg: inherit;
+    --color-secondary-text: inherit;
+    --color-secondary-link: inherit;
+    --color-secondary-outline: inherit;
+    --color-secondary-accent-bg: inherit;
+    --color-secondary-accent-text: inherit;
+    --color-secondary-accent-link: inherit;
+    --color-secondary-accent-outline: inherit;
+    --color-secondary-error-text: inherit;
+
+    /**
+     * Active Context Variables
+     * The generated rules will set these depending on the currently active theme palette.
+     */
+    --color-active-bg: inherit;
+    --color-active-text: inherit;
+    --color-active-link: inherit;
+    --color-active-outline: inherit;
+    --color-active-accent-bg: inherit;
+    --color-active-accent-text: inherit;
+    --color-active-accent-link: inherit;
+    --color-active-accent-outline: inherit;
+    --color-active-error-text: inherit;
+
+    /**
+     * Inactive Context Variables
+     * The generated rules will set these depending on the currently inactive theme palette.
+     */
+    --color-inactive-bg: inherit;
+    --color-inactive-text: inherit;
+    --color-inactive-link: inherit;
+    --color-inactive-outline: inherit;
+    --color-inactive-accent-bg: inherit;
+    --color-inactive-accent-text: inherit;
+    --color-inactive-accent-link: inherit;
+    --color-inactive-accent-outline: inherit;
+    --color-inactive-error-text: inherit;
+
+    /* Sizing */
+
+    --page-content-max-width: 80rem;
+    --headfoot-max-width: 90rem;
+
+    --footer-min-height: 2rem;
+
+    /* Font */
+
+    --base-font-size: 12pt;
+    --base-font-family: "Montserrat", Verdana, sans-serif;
+
+    --font-size-largest: 2.00rem;
+    --font-size-larger: 1.50rem;
+    --font-size-large: 1.17rem;
+    --font-size-normal: 1.00rem;
+    --font-size-small: 0.83rem;
+    --font-size-smaller: 0.67rem;
+    --font-size-smallest: 0.50rem;
+
+    --font-size-h1: 2.00rem;
+    --font-size-h2: 1.50rem;
+    --font-size-h3: 1.30rem;
+    --font-size-h4: 1.00rem;
+    --font-size-h5: 0.80rem;
+    --font-size-h6: 0.70rem;
+
+    --font-weight-normal: 450;
+    --font-weight-bold: 650;
+
+    /* Additional Constants */
+
+    --curve-radius-small: 8px;
+    --curve-radius-large: 16px;
+}
+
+html {
+    font-optical-sizing: auto;
+    font-size: var(--base-font-size);
+    font-family: var(--base-font-family);
+    font-weight: var(--font-weight-normal);
+    font-style: normal;
+}
+
+.theme-primary,
+.theme-secondary {
+    background-color: var(--color-active-bg);
+    color: var(--color-active-text);
+    fill: var(--color-active-text);
+    stroke: var(--color-active-text);
+    outline-color: var(--color-active-outline);
+    border-color: var(--color-active-outline);
+}
+
+.theme-primary a,
+.theme-secondary a {
+    color: var(--color-active-link);
+    fill: var(--color-active-link);
+    stroke: var(--color-active-link);
+}
+
+.theme-accent {
+    background-color: var(--color-active-accent-bg);
+    color: var(--color-active-accent-text);
+    fill: var(--color-active-accent-text);
+    stroke: var(--color-active-accent-text);
+    outline-color: var(--color-active-accent-outline);
+    border-color: var(--color-active-accent-outline);
+
+    text-shadow: 0 0 1px var(--color-active-bg);
+}
+
+.theme-accent a {
+    color: var(--color-active-accent-link);
+    fill: var(--color-active-accent-link);
+    stroke: var(--color-active-accent-link);
+}
+
+.theme-error {
+    color: var(--color-active-error-text);
+    fill: var(--color-active-error-text);
+    stroke: var(--color-active-error-text);
+}
+/*! normalize.css v8.0.1 | MIT License | github.com/necolas/normalize.css */
+
+/* Document
+   ========================================================================== */
+
+/**
+ * 1. Correct the line height in all browsers.
+ * 2. Prevent adjustments of font size after orientation changes in iOS.
+ */
+
+html {
+  line-height: 1.15; /* 1 */
+  -webkit-text-size-adjust: 100%; /* 2 */
+}
+
+/* Sections
+   ========================================================================== */
+
+/**
+ * Remove the margin in all browsers.
+ */
+
+body {
+  margin: 0;
+}
+
+/**
+ * Render the `main` element consistently in IE.
+ */
+
+main {
+  display: block;
+}
+
+/**
+ * Correct the font size and margin on `h1` elements within `section` and
+ * `article` contexts in Chrome, Firefox, and Safari.
+ */
+
+h1 {
+  font-size: 2em;
+  margin: 0.67em 0;
+}
+
+/* Grouping content
+   ========================================================================== */
+
+/**
+ * 1. Add the correct box sizing in Firefox.
+ * 2. Show the overflow in Edge and IE.
+ */
+
+hr {
+  box-sizing: content-box; /* 1 */
+  height: 0; /* 1 */
+  overflow: visible; /* 2 */
+}
+
+/**
+ * 1. Correct the inheritance and scaling of font size in all browsers.
+ * 2. Correct the odd `em` font sizing in all browsers.
+ */
+
+pre {
+  font-family: monospace, monospace; /* 1 */
+  font-size: 1em; /* 2 */
+}
+
+/* Text-level semantics
+   ========================================================================== */
+
+/**
+ * Remove the gray background on active links in IE 10.
+ */
+
+a {
+  background-color: transparent;
+}
+
+/**
+ * 1. Remove the bottom border in Chrome 57-
+ * 2. Add the correct text decoration in Chrome, Edge, IE, Opera, and Safari.
+ */
+
+abbr[title] {
+  border-bottom: none; /* 1 */
+  text-decoration: underline; /* 2 */
+  text-decoration: underline dotted; /* 2 */
+}
+
+/**
+ * Add the correct font weight in Chrome, Edge, and Safari.
+ */
+
+b,
+strong {
+  font-weight: bolder;
+}
+
+/**
+ * 1. Correct the inheritance and scaling of font size in all browsers.
+ * 2. Correct the odd `em` font sizing in all browsers.
+ */
+
+code,
+kbd,
+samp {
+  font-family: monospace, monospace; /* 1 */
+  font-size: 1em; /* 2 */
+}
+
+/**
+ * Add the correct font size in all browsers.
+ */
+
+small {
+  font-size: 80%;
+}
+
+/**
+ * Prevent `sub` and `sup` elements from affecting the line height in
+ * all browsers.
+ */
+
+sub,
+sup {
+  font-size: 75%;
+  line-height: 0;
+  position: relative;
+  vertical-align: baseline;
+}
+
+sub {
+  bottom: -0.25em;
+}
+
+sup {
+  top: -0.5em;
+}
+
+/* Embedded content
+   ========================================================================== */
+
+/**
+ * Remove the border on images inside links in IE 10.
+ */
+
+img {
+  border-style: none;
+}
+
+/* Forms
+   ========================================================================== */
+
+/**
+ * 1. Change the font styles in all browsers.
+ * 2. Remove the margin in Firefox and Safari.
+ */
+
+button,
+input,
+optgroup,
+select,
+textarea {
+  font-family: inherit; /* 1 */
+  font-size: 100%; /* 1 */
+  line-height: 1.15; /* 1 */
+  margin: 0; /* 2 */
+}
+
+/**
+ * Show the overflow in IE.
+ * 1. Show the overflow in Edge.
+ */
+
+button,
+input { /* 1 */
+  overflow: visible;
+}
+
+/**
+ * Remove the inheritance of text transform in Edge, Firefox, and IE.
+ * 1. Remove the inheritance of text transform in Firefox.
+ */
+
+button,
+select { /* 1 */
+  text-transform: none;
+}
+
+/**
+ * Correct the inability to style clickable types in iOS and Safari.
+ */
+
+button,
+[type="button"],
+[type="reset"],
+[type="submit"] {
+  -webkit-appearance: button;
+}
+
+/**
+ * Remove the inner border and padding in Firefox.
+ */
+
+button::-moz-focus-inner,
+[type="button"]::-moz-focus-inner,
+[type="reset"]::-moz-focus-inner,
+[type="submit"]::-moz-focus-inner {
+  border-style: none;
+  padding: 0;
+}
+
+/**
+ * Restore the focus styles unset by the previous rule.
+ */
+
+button:-moz-focusring,
+[type="button"]:-moz-focusring,
+[type="reset"]:-moz-focusring,
+[type="submit"]:-moz-focusring {
+  outline: 1px dotted ButtonText;
+}
+
+/**
+ * Correct the padding in Firefox.
+ */
+
+fieldset {
+  padding: 0.35em 0.75em 0.625em;
+}
+
+/**
+ * 1. Correct the text wrapping in Edge and IE.
+ * 2. Correct the color inheritance from `fieldset` elements in IE.
+ * 3. Remove the padding so developers are not caught out when they zero out
+ *    `fieldset` elements in all browsers.
+ */
+
+legend {
+  box-sizing: border-box; /* 1 */
+  color: inherit; /* 2 */
+  display: table; /* 1 */
+  max-width: 100%; /* 1 */
+  padding: 0; /* 3 */
+  white-space: normal; /* 1 */
+}
+
+/**
+ * Add the correct vertical alignment in Chrome, Firefox, and Opera.
+ */
+
+progress {
+  vertical-align: baseline;
+}
+
+/**
+ * Remove the default vertical scrollbar in IE 10+.
+ */
+
+textarea {
+  overflow: auto;
+}
+
+/**
+ * 1. Add the correct box sizing in IE 10.
+ * 2. Remove the padding in IE 10.
+ */
+
+[type="checkbox"],
+[type="radio"] {
+  box-sizing: border-box; /* 1 */
+  padding: 0; /* 2 */
+}
+
+/**
+ * Correct the cursor style of increment and decrement buttons in Chrome.
+ */
+
+[type="number"]::-webkit-inner-spin-button,
+[type="number"]::-webkit-outer-spin-button {
+  height: auto;
+}
+
+/**
+ * 1. Correct the odd appearance in Chrome and Safari.
+ * 2. Correct the outline style in Safari.
+ */
+
+[type="search"] {
+  -webkit-appearance: textfield; /* 1 */
+  outline-offset: -2px; /* 2 */
+}
+
+/**
+ * Remove the inner padding in Chrome and Safari on macOS.
+ */
+
+[type="search"]::-webkit-search-decoration {
+  -webkit-appearance: none;
+}
+
+/**
+ * 1. Correct the inability to style clickable types in iOS and Safari.
+ * 2. Change font properties to `inherit` in Safari.
+ */
+
+::-webkit-file-upload-button {
+  -webkit-appearance: button; /* 1 */
+  font: inherit; /* 2 */
+}
+
+/* Interactive
+   ========================================================================== */
+
+/*
+ * Add the correct display in Edge, IE 10+, and Firefox.
+ */
+
+details {
+  display: block;
+}
+
+/*
+ * Add the correct display in all browsers.
+ */
+
+summary {
+  display: list-item;
+}
+
+/* Misc
+   ========================================================================== */
+
+/**
+ * Add the correct display in IE 10+.
+ */
+
+template {
+  display: none;
+}
+
+/**
+ * Add the correct display in IE 10.
+ */
+
+[hidden] {
+  display: none;
+}
+/* PrismJS 1.30.0
+https://prismjs.com/download#themes=prism-okaidia&languages=markup+css+clike+javascript+json */
+@scope (.darkmode) {
+code[class*=language-],pre[class*=language-]{color:#f8f8f2;background:0 0;text-shadow:0 1px rgba(0,0,0,.3);font-family:Consolas,Monaco,'Andale Mono','Ubuntu Mono',monospace;font-size:1em;text-align:left;white-space:pre;word-spacing:normal;word-break:normal;word-wrap:normal;line-height:1.5;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-hyphens:none;-moz-hyphens:none;-ms-hyphens:none;hyphens:none}pre[class*=language-]{padding:1em;margin:.5em 0;overflow:auto;border-radius:.3em}:not(pre)>code[class*=language-],pre[class*=language-]{background:#272822}:not(pre)>code[class*=language-]{padding:.1em;border-radius:.3em;white-space:normal}.token.cdata,.token.comment,.token.doctype,.token.prolog{color:#8292a2}.token.punctuation{color:#f8f8f2}.token.namespace{opacity:.7}.token.constant,.token.deleted,.token.property,.token.symbol,.token.tag{color:#f92672}.token.boolean,.token.number{color:#ae81ff}.token.attr-name,.token.builtin,.token.char,.token.inserted,.token.selector,.token.string{color:#a6e22e}.language-css .token.string,.style .token.string,.token.entity,.token.operator,.token.url,.token.variable{color:#f8f8f2}.token.atrule,.token.attr-value,.token.class-name,.token.function{color:#e6db74}.token.keyword{color:#66d9ef}.token.important,.token.regex{color:#fd971f}.token.bold,.token.important{font-weight:700}.token.italic{font-style:italic}.token.entity{cursor:help}
+}
+/* PrismJS 1.30.0
+https://prismjs.com/download#themes=prism&languages=markup+css+clike+javascript+json */
+@scope (.lightmode) {
+code[class*=language-],pre[class*=language-]{color:#000;background:0 0;text-shadow:0 1px #fff;font-family:Consolas,Monaco,'Andale Mono','Ubuntu Mono',monospace;font-size:1em;text-align:left;white-space:pre;word-spacing:normal;word-break:normal;word-wrap:normal;line-height:1.5;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-hyphens:none;-moz-hyphens:none;-ms-hyphens:none;hyphens:none}code[class*=language-] ::-moz-selection,code[class*=language-]::-moz-selection,pre[class*=language-] ::-moz-selection,pre[class*=language-]::-moz-selection{text-shadow:none;background:#b3d4fc}code[class*=language-] ::selection,code[class*=language-]::selection,pre[class*=language-] ::selection,pre[class*=language-]::selection{text-shadow:none;background:#b3d4fc}@media print{code[class*=language-],pre[class*=language-]{text-shadow:none}}pre[class*=language-]{padding:1em;margin:.5em 0;overflow:auto}:not(pre)>code[class*=language-],pre[class*=language-]{background:#f5f2f0}:not(pre)>code[class*=language-]{padding:.1em;border-radius:.3em;white-space:normal}.token.cdata,.token.comment,.token.doctype,.token.prolog{color:#708090}.token.punctuation{color:#999}.token.namespace{opacity:.7}.token.boolean,.token.constant,.token.deleted,.token.number,.token.property,.token.symbol,.token.tag{color:#905}.token.attr-name,.token.builtin,.token.char,.token.inserted,.token.selector,.token.string{color:#690}.language-css .token.string,.style .token.string,.token.entity,.token.operator,.token.url{color:#9a6e3a;background:hsla(0,0%,100%,.5)}.token.atrule,.token.attr-value,.token.keyword{color:#07a}.token.class-name,.token.function{color:#dd4a68}.token.important,.token.regex,.token.variable{color:#e90}.token.bold,.token.important{font-weight:700}.token.italic{font-style:italic}.token.entity{cursor:help}
+}
+/* EduLinq Hnadling for Light/Dark Mode */
+
+/* Default to light colors. */
+html {
+    --color-primary-bg: var(--color-light-primary-bg);
+    --color-primary-text: var(--color-light-primary-text);
+    --color-primary-link: var(--color-light-primary-link);
+    --color-primary-outline: var(--color-light-primary-outline);
+    --color-primary-accent-bg: var(--color-light-primary-accent-bg);
+    --color-primary-accent-text: var(--color-light-primary-accent-text);
+    --color-primary-accent-link: var(--color-light-primary-accent-link);
+    --color-primary-accent-outline: var(--color-light-primary-accent-outline);
+    --color-primary-error-text: var(--color-light-primary-error-text);
+
+    --color-secondary-bg: var(--color-light-secondary-bg);
+    --color-secondary-text: var(--color-light-secondary-text);
+    --color-secondary-link: var(--color-light-secondary-link);
+    --color-secondary-outline: var(--color-light-secondary-outline);
+    --color-secondary-accent-bg: var(--color-light-secondary-accent-bg);
+    --color-secondary-accent-text: var(--color-light-secondary-accent-text);
+    --color-secondary-accent-link: var(--color-light-secondary-accent-link);
+    --color-secondary-accent-outline: var(--color-light-secondary-accent-outline);
+    --color-secondary-error-text: var(--color-light-secondary-error-text);
+}
+
+/* Let system setting override default color scheme. */
+@media (prefers-color-scheme: light) {
+    html {
+        --color-primary-bg: var(--color-light-primary-bg);
+        --color-primary-text: var(--color-light-primary-text);
+        --color-primary-link: var(--color-light-primary-link);
+        --color-primary-outline: var(--color-light-primary-outline);
+        --color-primary-accent-bg: var(--color-light-primary-accent-bg);
+        --color-primary-accent-text: var(--color-light-primary-accent-text);
+        --color-primary-accent-link: var(--color-light-primary-accent-link);
+        --color-primary-accent-outline: var(--color-light-primary-accent-outline);
+        --color-primary-error-text: var(--color-light-primary-error-text);
+
+        --color-secondary-bg: var(--color-light-secondary-bg);
+        --color-secondary-text: var(--color-light-secondary-text);
+        --color-secondary-link: var(--color-light-secondary-link);
+        --color-secondary-outline: var(--color-light-secondary-outline);
+        --color-secondary-accent-bg: var(--color-light-secondary-accent-bg);
+        --color-secondary-accent-text: var(--color-light-secondary-accent-text);
+        --color-secondary-accent-link: var(--color-light-secondary-accent-link);
+        --color-secondary-accent-outline: var(--color-light-secondary-accent-outline);
+        --color-secondary-error-text: var(--color-light-secondary-error-text);
+    }
+}
+
+@media (prefers-color-scheme: dark) {
+    html {
+        --color-primary-bg: var(--color-dark-primary-bg);
+        --color-primary-text: var(--color-dark-primary-text);
+        --color-primary-link: var(--color-dark-primary-link);
+        --color-primary-outline: var(--color-dark-primary-outline);
+        --color-primary-accent-bg: var(--color-dark-primary-accent-bg);
+        --color-primary-accent-text: var(--color-dark-primary-accent-text);
+        --color-primary-accent-link: var(--color-dark-primary-accent-link);
+        --color-primary-accent-outline: var(--color-dark-primary-accent-outline);
+        --color-primary-error-text: var(--color-dark-primary-error-text);
+
+        --color-secondary-bg: var(--color-dark-secondary-bg);
+        --color-secondary-text: var(--color-dark-secondary-text);
+        --color-secondary-link: var(--color-dark-secondary-link);
+        --color-secondary-outline: var(--color-dark-secondary-outline);
+        --color-secondary-accent-bg: var(--color-dark-secondary-accent-bg);
+        --color-secondary-accent-text: var(--color-dark-secondary-accent-text);
+        --color-secondary-accent-link: var(--color-dark-secondary-accent-link);
+        --color-secondary-accent-outline: var(--color-dark-secondary-accent-outline);
+        --color-secondary-error-text: var(--color-dark-secondary-error-text);
+    }
+}
+
+/* Let explicit setting override system default. */
+.lightmode {
+    --color-primary-bg: var(--color-light-primary-bg);
+    --color-primary-text: var(--color-light-primary-text);
+    --color-primary-link: var(--color-light-primary-link);
+    --color-primary-outline: var(--color-light-primary-outline);
+    --color-primary-accent-bg: var(--color-light-primary-accent-bg);
+    --color-primary-accent-text: var(--color-light-primary-accent-text);
+    --color-primary-accent-link: var(--color-light-primary-accent-link);
+    --color-primary-accent-outline: var(--color-light-primary-accent-outline);
+    --color-primary-error-text: var(--color-light-primary-error-text);
+
+    --color-secondary-bg: var(--color-light-secondary-bg);
+    --color-secondary-text: var(--color-light-secondary-text);
+    --color-secondary-link: var(--color-light-secondary-link);
+    --color-secondary-outline: var(--color-light-secondary-outline);
+    --color-secondary-accent-bg: var(--color-light-secondary-accent-bg);
+    --color-secondary-accent-text: var(--color-light-secondary-accent-text);
+    --color-secondary-accent-link: var(--color-light-secondary-accent-link);
+    --color-secondary-accent-outline: var(--color-light-secondary-accent-outline);
+    --color-secondary-error-text: var(--color-light-secondary-error-text);
+}
+
+.darkmode {
+    --color-primary-bg: var(--color-dark-primary-bg);
+    --color-primary-text: var(--color-dark-primary-text);
+    --color-primary-link: var(--color-dark-primary-link);
+    --color-primary-outline: var(--color-dark-primary-outline);
+    --color-primary-accent-bg: var(--color-dark-primary-accent-bg);
+    --color-primary-accent-text: var(--color-dark-primary-accent-text);
+    --color-primary-accent-link: var(--color-dark-primary-accent-link);
+    --color-primary-accent-outline: var(--color-dark-primary-accent-outline);
+    --color-primary-error-text: var(--color-dark-primary-error-text);
+
+    --color-secondary-bg: var(--color-dark-secondary-bg);
+    --color-secondary-text: var(--color-dark-secondary-text);
+    --color-secondary-link: var(--color-dark-secondary-link);
+    --color-secondary-outline: var(--color-dark-secondary-outline);
+    --color-secondary-accent-bg: var(--color-dark-secondary-accent-bg);
+    --color-secondary-accent-text: var(--color-dark-secondary-accent-text);
+    --color-secondary-accent-link: var(--color-dark-secondary-accent-link);
+    --color-secondary-accent-outline: var(--color-dark-secondary-accent-outline);
+    --color-secondary-error-text: var(--color-dark-secondary-error-text);
+}
+
+html.no-brightness-selection .darkmode-only,
+html.no-brightness-selection .lightmode-only,
+html.lightmode .darkmode-only,
+html.darkmode .lightmode-only {
+    display: none;
+}
+/* Icons */
+
+.icon {
+    height: 1em;
+    width: 1em;
+}
+/* Utility CSS Rules */
+
+.hidden,
+html body .hidden {
+    display: none;
+}
+
+.center {
+    text-align: center;
+}
+/* EduLinq Base HTML Elements */
+
+* {
+    outline-width: 0;
+}
+
+html {
+    word-break: break-word;
+}
+
+hr {
+    width: 100%;
+    border-width: 2px;
+}
+
+h1, h2, h3, h4, h5, h6,
+p, span,
+ul, ol {
+    margin: 0;
+    padding: 0;
+}
+
+p {
+    margin-bottom: 1rem;
+}
+
+ul,
+ol {
+    margin-left: 2rem;
+}
+
+h1 {
+    font-size: var(--font-size-h1);
+    margin-bottom: 1rem;
+}
+
+h2 {
+    font-size: var(--font-size-h2);
+    margin-bottom: 0.875rem;
+}
+
+h3 {
+    font-size: var(--font-size-h3);
+    margin-bottom: 0.75rem;
+}
+
+h4 {
+    font-size: var(--font-size-h4);
+    margin-bottom: 0.625rem;
+}
+
+h5 {
+    font-size: var(--font-size-h5);
+    margin-bottom: 0.5rem;
+}
+
+h6 {
+    font-size: var(--font-size-h6);
+    margin-bottom: 0.375rem;
+}
+
+:is(h1, h2, h3, h4, h5, h6).bar {
+    text-align: center;
+
+    padding: 1.0em;
+    border-radius: var(--curve-radius-large);
+}
+
+p > code,
+span > code {
+    border-radius: var(--curve-radius-small);
+    padding: 0 0.25rem 0 0.25rem;
+}
+
+pre,
+pre > code {
+    border-radius: var(--curve-radius-small);
+}
+
+fieldset {
+    padding: 0;
+    outline: none;
+    border: none;
+}
+
+button,
+input,
+select,
+textarea {
+    background-color: var(--color-inactive-bg);
+    color: var(--color-inactive-text);
+
+    border-color: var(--color-inactive-outline);
+    border-width: 1px;
+    border-radius: var(--curve-radius-small);
+    box-shadow: 2px 2px 1px var(--color-inactive-outline);
+
+    cursor: pointer;
+    max-width: 80svw;
+}
+
+textarea {
+    min-height: 5svw;
+    min-width: 20svw;
+}
+
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled {
+    filter: brightness(0.50);
+    cursor: no-drop;
+}
+
+input {
+    padding: 0.25rem 0.5rem;
+}
+
+button {
+    padding: 0.5rem 0.25rem;
+}
+
+select {
+    padding: 0.75rem 1rem;
+}
+
+button:hover:not([disabled]),
+input:hover:not([disabled]),
+select:hover:not([disabled]),
+textarea:hover:not([disabled]) {
+    filter: brightness(1.25);
+}
+
+button:hover:not([disabled]) {
+    transform: translateY(-1px);
+}
+
+button:focus:not([disabled]),
+input:focus:not([disabled]),
+select:focus:not([disabled]),
+textarea:focus:not([disabled]) {
+    box-shadow: none;
+}
+
+input[type="checkbox"] {
+    accent-color: var(--color-inactive-accent-bg);
+    height: 1.25rem;
+    width: 1.25rem;
+}
+
+input[type="checkbox"]:hover:not([disabled]) {
+    box-shadow: 2px 2px 0px var(--color-active-outline);
+}
+
+input[type="checkbox"]:focus {
+    box-shadow: 2px 2px 1px var(--color-active-outline);
+}
+/* EduLinq Layout */
+
+.page {
+    display: grid;
+    grid-template-rows: min-content 1fr min-content;
+
+    min-height: 100svh;
+}
+
+.page-content {
+    width: min(90svw, var(--page-content-max-width));
+    margin: 0 auto;
+}
+
+.page > .header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+
+    font-size: var(--font-size-large);
+}
+
+.site-header,
+.page-header,
+.page > .footer {
+    padding: 0 max(2rem, calc((100svw - var(--headfoot-max-width)) / 2));
+}
+
+.site-header {
+    display: grid;
+    grid-template-columns: 1fr 3fr 1fr;
+}
+
+.site-branding span {
+    margin: 0.25em 0;
+
+    font-size: var(--font-size-larger);
+}
+
+.page-header {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+
+    font-size: var(--font-size-normal);
+}
+
+.breadcrumbs {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+}
+
+.breadcrumbs span {
+    margin: auto 0;
+}
+
+.breadcrumbs span:not(:last-child)::after {
+    content: ">";
+    margin: 0 0.5em;
+}
+
+.page-header .breadcrumbs a {
+    text-decoration: none;
+}
+
+.page-header .brightmode-toggle {
+    display: flex;
+    flex-direction: row-reverse;
+    gap: 1em;
+
+    cursor: pointer;
+}
+
+.page-header .brightmode-toggle .icon {
+    height: 1.5em;
+    width: 1.5em;
+}
+
+* {
+    scroll-margin-top: 5rem;
+}
+
+.site-nav {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: stretch;
+
+    padding-top: 0rem;
+    padding-bottom: 0rem;
+}
+
+.site-context {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-end;
+    align-items: center;
+    gap: min(1.0rem, 1.0svw);
+}
+
+.nav-item:hover {
+    filter: brightness(1.50);
+}
+
+.nav-item.nav-highlight {
+    box-shadow: 0 -3px 0 var(--color-active-link) inset;
+}
+
+div.nav-item > a {
+    height: 100%;
+    display: block;
+    align-content: center;
+    padding: 0 0.75em;
+
+    text-decoration: none;
+    color: var(--color-active-text);
+}
+
+.footer {
+    min-height: var(--footer-min-height);
+
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    align-items: center;
+}
+
+.footer .left {
+    text-align: left;
+}
+
+.footer .center {
+    text-align: center;
+}
+
+.footer .right {
+    text-align: right;
+}
+
+.content-area {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+
+    flex-grow: 1000;
+}
+
+.content {
+    padding: 1.0rem;
+    border-radius: var(--curve-radius-large);
+}
+
+.section,
+.subsection,
+.subsubsection {
+    padding: 1.5rem;
+    border-radius: var(--curve-radius-large);
+
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: stretch;
+    gap: 1em;
+}
+
+.section {
+    margin: min(1.5rem, 1svw);
+}
+/* EduLinq Fields */
+
+.edq-fieldset {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.edq-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.edq-field .error-message,
+.edq-field label .required {
+    color: var(--color-active-error-text);
+}
+
+.edq-field input:invalid.touched {
+    border-color: var(--color-active-error-text);
+}
+
+.edq-field-slider > div,
+.edq-field-secret > div {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1em;
+}
+
+.edq-field-slider input {
+    width: 85%;
+}
+
+.edq-field-secret input {
+    flex-grow: 1;
+}
+
+.edq-field-secret input[type="checkbox"],
+.edq-field-secret input[type="radio"] {
+    flex-grow: 0.1;
+    width: 0;
+}
+
+.edq-field-checkbox > div,
+.edq-field-radio > div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.edq-field-checkbox > div > div,
+.edq-field-radio > div > div {
+    display: flex;
+    flex-direction: row;
+    gap: 0.25rem;
+}
+/* EduLinq Table Style */
+
+table.standard-table {
+    border-collapse: collapse;
+}
+
+table.standard-table th,
+table.standard-table td {
+    padding: 0.50rem;
+}
+
+table.standard-table th,
+table.standard-table tr:not(:last-child) {
+    border-bottom: 1px solid var(--color-active-outline);
+}
+
+table.sortable-table th[data-ascending='true']::after {
+    content: ' ↑';
+}
+
+table.sortable-table th[data-ascending='false']::after {
+    content: ' ↓';
+}
+.card-area {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    justify-content: flex-start;
+    gap: 2rem;
+    align-items: stretch;
+}
+
+.card {
+    flex-basis: 20svw;
+    flex-grow: 1;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: stretch;
+
+    min-width: min-content;
+
+    border-radius: var(--curve-radius-large);
+    font-size: var(--font-size-larger);
+    text-align: center;
+
+    outline-width: 2px;
+    outline-style: solid;
+    outline-offset: -2px;
+
+    padding: 1.5rem;
+}
+
+.card:hover {
+    transform: translateY(-3px);
+    transition: all 0.3s ease;
+
+    filter: brightness(1.50);
+}
+
+.card[data-type='link'] {
+    word-break: keep-all;
+    padding: 0;
+}
+
+.card[data-type='link'] > a {
+    padding: 1.5rem;
+}
+
+.card > a,
+.card > span,
+.card > p {
+    text-decoration: none;
+}
+
+.card h1, .card h2, .card h3, .card h4, .card h5, .card h6 {
+    text-align: center;
+    margin-bottom: 0.5em;
+    word-break: keep-all;
+}
+
+.card[data-type='large'] p {
+    text-align: start;
+}
+/* EduLinq Misc Style */
+
+:is(h1, h2, h3, h4, h5, h6).bar {
+    text-align: center;
+
+    padding: 1.0em;
+    border-radius: var(--curve-radius-large);
+}
+
+.drop-shadow {
+    box-shadow: 2px 2px 0px var(--color-active-outline);
+}
+
+/* Generated Rules */
+
+.theme-primary {
+    --color-active-bg: var(--color-primary-bg);
+    --color-active-text: var(--color-primary-text);
+    --color-active-link: var(--color-primary-link);
+    --color-active-outline: var(--color-primary-outline);
+    --color-active-code-bg: var(--color-primary-code-bg);
+    --color-active-code-text: var(--color-primary-code-text);
+    --color-active-code-outline: var(--color-primary-code-outline);
+    --color-active-accent-bg: var(--color-primary-accent-bg);
+    --color-active-accent-text: var(--color-primary-accent-text);
+    --color-active-accent-link: var(--color-primary-accent-link);
+    --color-active-accent-outline: var(--color-primary-accent-outline);
+    --color-active-error-text: var(--color-primary-error-text);
+
+    --color-inactive-bg: var(--color-secondary-bg);
+    --color-inactive-text: var(--color-secondary-text);
+    --color-inactive-link: var(--color-secondary-link);
+    --color-inactive-outline: var(--color-secondary-outline);
+    --color-inactive-code-bg: var(--color-secondary-code-bg);
+    --color-inactive-code-text: var(--color-secondary-code-text);
+    --color-inactive-code-outline: var(--color-secondary-code-outline);
+    --color-inactive-accent-bg: var(--color-secondary-accent-bg);
+    --color-inactive-accent-text: var(--color-secondary-accent-text);
+    --color-inactive-accent-link: var(--color-secondary-accent-link);
+    --color-inactive-accent-outline: var(--color-secondary-accent-outline);
+    --color-inactive-error-text: var(--color-secondary-error-text);
+}
+
+.theme-secondary {
+    --color-active-bg: var(--color-secondary-bg);
+    --color-active-text: var(--color-secondary-text);
+    --color-active-link: var(--color-secondary-link);
+    --color-active-outline: var(--color-secondary-outline);
+    --color-active-code-bg: var(--color-secondary-code-bg);
+    --color-active-code-text: var(--color-secondary-code-text);
+    --color-active-code-outline: var(--color-secondary-code-outline);
+    --color-active-accent-bg: var(--color-secondary-accent-bg);
+    --color-active-accent-text: var(--color-secondary-accent-text);
+    --color-active-accent-link: var(--color-secondary-accent-link);
+    --color-active-accent-outline: var(--color-secondary-accent-outline);
+    --color-active-error-text: var(--color-secondary-error-text);
+
+    --color-inactive-bg: var(--color-primary-bg);
+    --color-inactive-text: var(--color-primary-text);
+    --color-inactive-link: var(--color-primary-link);
+    --color-inactive-outline: var(--color-primary-outline);
+    --color-inactive-code-bg: var(--color-primary-code-bg);
+    --color-inactive-code-text: var(--color-primary-code-text);
+    --color-inactive-code-outline: var(--color-primary-code-outline);
+    --color-inactive-accent-bg: var(--color-primary-accent-bg);
+    --color-inactive-accent-text: var(--color-primary-accent-text);
+    --color-inactive-accent-link: var(--color-primary-accent-link);
+    --color-inactive-accent-outline: var(--color-primary-accent-outline);
+    --color-inactive-error-text: var(--color-primary-error-text);
+}
+
+.theme-primary .theme-secondary {
+    --color-active-bg: var(--color-secondary-bg);
+    --color-active-text: var(--color-secondary-text);
+    --color-active-link: var(--color-secondary-link);
+    --color-active-outline: var(--color-secondary-outline);
+    --color-active-code-bg: var(--color-secondary-code-bg);
+    --color-active-code-text: var(--color-secondary-code-text);
+    --color-active-code-outline: var(--color-secondary-code-outline);
+    --color-active-accent-bg: var(--color-secondary-accent-bg);
+    --color-active-accent-text: var(--color-secondary-accent-text);
+    --color-active-accent-link: var(--color-secondary-accent-link);
+    --color-active-accent-outline: var(--color-secondary-accent-outline);
+    --color-active-error-text: var(--color-secondary-error-text);
+
+    --color-inactive-bg: var(--color-primary-bg);
+    --color-inactive-text: var(--color-primary-text);
+    --color-inactive-link: var(--color-primary-link);
+    --color-inactive-outline: var(--color-primary-outline);
+    --color-inactive-code-bg: var(--color-primary-code-bg);
+    --color-inactive-code-text: var(--color-primary-code-text);
+    --color-inactive-code-outline: var(--color-primary-code-outline);
+    --color-inactive-accent-bg: var(--color-primary-accent-bg);
+    --color-inactive-accent-text: var(--color-primary-accent-text);
+    --color-inactive-accent-link: var(--color-primary-accent-link);
+    --color-inactive-accent-outline: var(--color-primary-accent-outline);
+    --color-inactive-error-text: var(--color-primary-error-text);
+}
+
+.theme-primary .theme-secondary .theme-primary {
+    --color-active-bg: var(--color-primary-bg);
+    --color-active-text: var(--color-primary-text);
+    --color-active-link: var(--color-primary-link);
+    --color-active-outline: var(--color-primary-outline);
+    --color-active-code-bg: var(--color-primary-code-bg);
+    --color-active-code-text: var(--color-primary-code-text);
+    --color-active-code-outline: var(--color-primary-code-outline);
+    --color-active-accent-bg: var(--color-primary-accent-bg);
+    --color-active-accent-text: var(--color-primary-accent-text);
+    --color-active-accent-link: var(--color-primary-accent-link);
+    --color-active-accent-outline: var(--color-primary-accent-outline);
+    --color-active-error-text: var(--color-primary-error-text);
+
+    --color-inactive-bg: var(--color-secondary-bg);
+    --color-inactive-text: var(--color-secondary-text);
+    --color-inactive-link: var(--color-secondary-link);
+    --color-inactive-outline: var(--color-secondary-outline);
+    --color-inactive-code-bg: var(--color-secondary-code-bg);
+    --color-inactive-code-text: var(--color-secondary-code-text);
+    --color-inactive-code-outline: var(--color-secondary-code-outline);
+    --color-inactive-accent-bg: var(--color-secondary-accent-bg);
+    --color-inactive-accent-text: var(--color-secondary-accent-text);
+    --color-inactive-accent-link: var(--color-secondary-accent-link);
+    --color-inactive-accent-outline: var(--color-secondary-accent-outline);
+    --color-inactive-error-text: var(--color-secondary-error-text);
+}
+
+.theme-primary .theme-secondary .theme-primary .theme-secondary {
+    --color-active-bg: var(--color-secondary-bg);
+    --color-active-text: var(--color-secondary-text);
+    --color-active-link: var(--color-secondary-link);
+    --color-active-outline: var(--color-secondary-outline);
+    --color-active-code-bg: var(--color-secondary-code-bg);
+    --color-active-code-text: var(--color-secondary-code-text);
+    --color-active-code-outline: var(--color-secondary-code-outline);
+    --color-active-accent-bg: var(--color-secondary-accent-bg);
+    --color-active-accent-text: var(--color-secondary-accent-text);
+    --color-active-accent-link: var(--color-secondary-accent-link);
+    --color-active-accent-outline: var(--color-secondary-accent-outline);
+    --color-active-error-text: var(--color-secondary-error-text);
+
+    --color-inactive-bg: var(--color-primary-bg);
+    --color-inactive-text: var(--color-primary-text);
+    --color-inactive-link: var(--color-primary-link);
+    --color-inactive-outline: var(--color-primary-outline);
+    --color-inactive-code-bg: var(--color-primary-code-bg);
+    --color-inactive-code-text: var(--color-primary-code-text);
+    --color-inactive-code-outline: var(--color-primary-code-outline);
+    --color-inactive-accent-bg: var(--color-primary-accent-bg);
+    --color-inactive-accent-text: var(--color-primary-accent-text);
+    --color-inactive-accent-link: var(--color-primary-accent-link);
+    --color-inactive-accent-outline: var(--color-primary-accent-outline);
+    --color-inactive-error-text: var(--color-primary-error-text);
+}
+
+.theme-primary .theme-secondary .theme-primary .theme-secondary .theme-primary {
+    --color-active-bg: var(--color-primary-bg);
+    --color-active-text: var(--color-primary-text);
+    --color-active-link: var(--color-primary-link);
+    --color-active-outline: var(--color-primary-outline);
+    --color-active-code-bg: var(--color-primary-code-bg);
+    --color-active-code-text: var(--color-primary-code-text);
+    --color-active-code-outline: var(--color-primary-code-outline);
+    --color-active-accent-bg: var(--color-primary-accent-bg);
+    --color-active-accent-text: var(--color-primary-accent-text);
+    --color-active-accent-link: var(--color-primary-accent-link);
+    --color-active-accent-outline: var(--color-primary-accent-outline);
+    --color-active-error-text: var(--color-primary-error-text);
+
+    --color-inactive-bg: var(--color-secondary-bg);
+    --color-inactive-text: var(--color-secondary-text);
+    --color-inactive-link: var(--color-secondary-link);
+    --color-inactive-outline: var(--color-secondary-outline);
+    --color-inactive-code-bg: var(--color-secondary-code-bg);
+    --color-inactive-code-text: var(--color-secondary-code-text);
+    --color-inactive-code-outline: var(--color-secondary-code-outline);
+    --color-inactive-accent-bg: var(--color-secondary-accent-bg);
+    --color-inactive-accent-text: var(--color-secondary-accent-text);
+    --color-inactive-accent-link: var(--color-secondary-accent-link);
+    --color-inactive-accent-outline: var(--color-secondary-accent-outline);
+    --color-inactive-error-text: var(--color-secondary-error-text);
+}
+
+.theme-primary .theme-secondary .theme-primary .theme-secondary .theme-primary .theme-secondary {
+    --color-active-bg: var(--color-secondary-bg);
+    --color-active-text: var(--color-secondary-text);
+    --color-active-link: var(--color-secondary-link);
+    --color-active-outline: var(--color-secondary-outline);
+    --color-active-code-bg: var(--color-secondary-code-bg);
+    --color-active-code-text: var(--color-secondary-code-text);
+    --color-active-code-outline: var(--color-secondary-code-outline);
+    --color-active-accent-bg: var(--color-secondary-accent-bg);
+    --color-active-accent-text: var(--color-secondary-accent-text);
+    --color-active-accent-link: var(--color-secondary-accent-link);
+    --color-active-accent-outline: var(--color-secondary-accent-outline);
+    --color-active-error-text: var(--color-secondary-error-text);
+
+    --color-inactive-bg: var(--color-primary-bg);
+    --color-inactive-text: var(--color-primary-text);
+    --color-inactive-link: var(--color-primary-link);
+    --color-inactive-outline: var(--color-primary-outline);
+    --color-inactive-code-bg: var(--color-primary-code-bg);
+    --color-inactive-code-text: var(--color-primary-code-text);
+    --color-inactive-code-outline: var(--color-primary-code-outline);
+    --color-inactive-accent-bg: var(--color-primary-accent-bg);
+    --color-inactive-accent-text: var(--color-primary-accent-text);
+    --color-inactive-accent-link: var(--color-primary-accent-link);
+    --color-inactive-accent-outline: var(--color-primary-accent-outline);
+    --color-inactive-error-text: var(--color-primary-error-text);
+}
