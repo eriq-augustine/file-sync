@@ -1,6 +1,5 @@
 package dev.eriq.filesync.plugin;
 
-import dev.eriq.filesync.Logging;
 import dev.eriq.filesync.Version;
 import dev.eriq.filesync.location.Location;
 import dev.eriq.filesync.util.JSON;
@@ -18,15 +17,12 @@ public class FileSyncPlugin extends CordovaPlugin {
 
     @Override
     public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
-        // TEST
-        Logging.setDebugLevel();
-
         switch (action) {
             case ACTION_VERSION:
                 callbackContext.success(Version.get());
                 return true;
             case ACTION_TEST_LOCATION:
-                callbackContext.success(testLocation(args.getJSONObject(0)));
+                testLocation(args.getJSONObject(0), callbackContext);
                 return true;
             default:
                 callbackContext.error(String.format("Unknown action: '%s'.", action));
@@ -34,14 +30,19 @@ public class FileSyncPlugin extends CordovaPlugin {
         }
     }
 
-    private static String testLocation(JSONObject data) {
+    private void testLocation(JSONObject data, CallbackContext callbackContext) {
         Location location = null;
         try {
             location = (Location)(JSON.fromJSON(data.toString()));
         } catch (Exception ex) {
-            return String.format("Failed to deserialize location: '%s'.", ex);
+            callbackContext.error(String.format("Failed to deserialize location: '%s'.", ex));
         }
 
-        return location.test();
+        final Location finalLocation = location;
+        this.cordova.getThreadPool().execute(new Runnable() {
+            public void run() {
+                callbackContext.success(finalLocation.test());
+            }
+        });
     }
 }

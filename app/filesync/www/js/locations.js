@@ -163,6 +163,9 @@ function renderEditLocation(defaultValues = {}) {
 
     let fieldSet = new edq.model.field.FieldSet(fields, {includeSubmitButton: false});
 
+    let notificationArea = document.createElement('p');
+    notificationArea.classList.add('display-notification');
+
     let addButton = document.createElement('button');
     addButton.textContent = 'Add Location';
     addButton.addEventListener('click', function(event) {
@@ -174,7 +177,7 @@ function renderEditLocation(defaultValues = {}) {
     let testButton = document.createElement('button');
     testButton.textContent = 'Test Location';
     testButton.addEventListener('click', function(event) {
-        testLocation(fieldSet.getValues());
+        testLocation(fieldSet.getValues(), notificationArea);
     });
 
     // Only enable the buttons if the fields are valid.
@@ -189,30 +192,29 @@ function renderEditLocation(defaultValues = {}) {
     header.classList.add('display-header');
     header.replaceChildren(addButton, testButton);
 
-    locationInputContainer.replaceChildren(header, fieldSet.element);
+    locationInputContainer.replaceChildren(header, notificationArea, fieldSet.element);
 
     return locationInputContainer;
 }
 
-function testLocation(values) {
-    // TEST
-    console.log("Test Location", values);
+function testLocation(values, resultContainer) {
+    resultContainer.textContent = 'Testing ...';
+    resultContainer.classList.remove('theme-error');
 
-    // TEST - Put in some sort of loading animation.
-
-    // TEST - Better error handling.
-
-    /* TEST
     window.FileSync.testLocation(values)
         .then(function(result) {
-            // TEST
-            console.log("Location Test Result", result);
+            if (result == null) {
+                resultContainer.textContent = 'Location test passed!';
+            } else {
+                resultContainer.classList.add('theme-error');
+                resultContainer.textContent = `Location test failed: '${result}'.`;
+            }
         })
         .catch(function(result) {
-            console.error("Failed to test location.", result);
+            resultContainer.classList.add('theme-error');
+            resultContainer.textContent = `Location test crashed: '${result}'.`;
         });
     ;
-    */
 }
 
 export {

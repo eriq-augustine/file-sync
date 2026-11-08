@@ -10,6 +10,13 @@
     margin: auto 0;
 }
 
+.edit-job fieldset,
 .edit-location fieldset {
     padding-top: 1em;
+}
+
+.display-notification {
+    margin: 1em 0 0 0;
+    padding: 1em;
+    border-radius: var(--curve-radius-small);
 }

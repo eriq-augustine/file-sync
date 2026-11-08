@@ -11,22 +11,6 @@ const ROUTES = [
     new edq.core.routing.NavExactRoute(new edq.core.routing.StringRoute('logs', logs.renderPage)),
 ];
 
-// TEST
-function pluginTest() {
-    let button = document.createElement('button');
-    button.textContent = 'Version';
-    button.addEventListener('click', function(event) {
-        window.FileSync.version().then(function(result) {
-            console.debug("FileSync Version", result);
-        });
-    });
-
-    document.querySelector('.page-content').appendChild(button);
-
-    // TEST
-    console.log(window.FileSync);
-}
-
 function routeHome(request) {
     // TEST
     console.log(request);

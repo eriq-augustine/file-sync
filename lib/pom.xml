@@ -127,7 +127,7 @@
                                 <filter>
                                     <artifact>com.github.mwiede:jsch</artifact>
                                     <includes>
-                                        <include>*</include>
+                                        <include>**</include>
                                     </includes>
                                 </filter>
                             </filters>
