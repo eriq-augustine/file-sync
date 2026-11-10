@@ -100,6 +100,16 @@ public abstract class Location extends JSON.MapConverter implements AutoCloseabl
         }
 
         try {
+            listDir(".");
+        } catch (Exception ex) {
+            String message = String.format("Failed to list base dir: '%s'.", ex.getMessage());
+            logger.warning(message + "\n" + Errors.toLogString(ex));
+            return message;
+        } finally {
+            close();
+        }
+
+        try {
             close();
         } catch (Exception ex) {
             String message = String.format("Failed to close location: '%s'.", ex.getMessage());

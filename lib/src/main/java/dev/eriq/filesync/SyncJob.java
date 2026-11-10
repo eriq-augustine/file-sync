@@ -71,6 +71,13 @@ public class SyncJob extends JSON.MapConverter {
     }
 
     /**
+     * Run a sync job now regardless of the schedule.
+     */
+    public void runNow() {
+        sync.sync();
+    }
+
+    /**
      * Get the next time (after now) that this job should activate,
      * or null if there are no more matching times.
      */
