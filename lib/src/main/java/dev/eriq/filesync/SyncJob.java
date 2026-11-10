@@ -63,6 +63,14 @@ public class SyncJob extends JSON.MapConverter {
     }
 
     /**
+     * Test that this job is valid.
+     * Return null on success, and an error message on failure.
+     */
+    public String test() {
+        return sync.test();
+    }
+
+    /**
      * Get the next time (after now) that this job should activate,
      * or null if there are no more matching times.
      */

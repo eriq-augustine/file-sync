@@ -54,7 +54,7 @@ function loadLocations() {
 // Get a location or undefined.
 function loadLocation(name) {
     let locations = loadLocations();
-    return loadtions[name];
+    return locations[name];
 }
 
 // Overwrites any existing locations.

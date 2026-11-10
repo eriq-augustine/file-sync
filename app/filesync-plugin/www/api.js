@@ -4,6 +4,7 @@ const SERVICE_NAME = 'FileSyncPlugin';
 const BROWSER_PLATFORM = 'browser';
 
 const ACTION_VERSION = 'version';
+const ACTION_TEST_JOB = 'test-job';
 const ACTION_TEST_LOCATION = 'test-location';
 
 const FileSync = function () { };
@@ -14,6 +15,14 @@ FileSync.prototype.version = function() {
     }
 
     return createPluginPromise(ACTION_VERSION, []);
+};
+
+FileSync.prototype.testJob = function(jobData) {
+    if (window.cordova.platformId === BROWSER_PLATFORM) {
+        return createMockPluginPromise(ACTION_TEST_JOB, [jobData]);
+    }
+
+    return createPluginPromise(ACTION_TEST_JOB, [jobData]);
 };
 
 FileSync.prototype.testLocation = function(locationData) {

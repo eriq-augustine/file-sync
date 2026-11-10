@@ -1,6 +1,7 @@
 package dev.eriq.filesync.plugin;
 
 import dev.eriq.filesync.Version;
+import dev.eriq.filesync.SyncJob;
 import dev.eriq.filesync.location.Location;
 import dev.eriq.filesync.util.JSON;
 
@@ -14,12 +15,16 @@ import org.json.JSONObject;
 public class FileSyncPlugin extends CordovaPlugin {
     private static final String ACTION_VERSION = "version";
     private static final String ACTION_TEST_LOCATION = "test-location";
+    private static final String ACTION_TEST_JOB = "test-job";
 
     @Override
     public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
         switch (action) {
             case ACTION_VERSION:
                 callbackContext.success(Version.get());
+                return true;
+            case ACTION_TEST_JOB:
+                testJob(args.getJSONObject(0), callbackContext);
                 return true;
             case ACTION_TEST_LOCATION:
                 testLocation(args.getJSONObject(0), callbackContext);
@@ -28,6 +33,22 @@ public class FileSyncPlugin extends CordovaPlugin {
                 callbackContext.error(String.format("Unknown action: '%s'.", action));
                 return false;
         }
+    }
+
+    private void testJob(JSONObject data, CallbackContext callbackContext) {
+        SyncJob job = null;
+        try {
+            job = (SyncJob)(JSON.fromJSON(data.toString()));
+        } catch (Exception ex) {
+            callbackContext.error(String.format("Failed to deserialize job: '%s'.", ex));
+        }
+
+        final SyncJob finalJob = job;
+        this.cordova.getThreadPool().execute(new Runnable() {
+            public void run() {
+                callbackContext.success(finalJob.test());
+            }
+        });
     }
 
     private void testLocation(JSONObject data, CallbackContext callbackContext) {

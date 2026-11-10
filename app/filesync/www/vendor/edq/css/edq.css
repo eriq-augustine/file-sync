@@ -824,6 +824,11 @@ button:hover:not([disabled]) {
     transform: translateY(-1px);
 }
 
+button:active:not([disabled]) {
+    filter: brightness(0.75);
+    transform: translateY(1px);
+}
+
 button:focus:not([disabled]),
 input:focus:not([disabled]),
 select:focus:not([disabled]),
@@ -1060,15 +1065,18 @@ div.nav-item > a {
     width: 0;
 }
 
-.edq-field-checkbox > div,
-.edq-field-radio > div {
+.edq-field-choices-inputs {
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
 }
 
-.edq-field-checkbox > div > div,
-.edq-field-radio > div > div {
+.edq-field-choices-inputs.inline {
+    flex-direction: row;
+    flex-wrap: wrap;
+}
+
+.edq-field-choices-inputs > div {
     display: flex;
     flex-direction: row;
     gap: 0.25rem;

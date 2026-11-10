@@ -138,6 +138,31 @@ public class Sync extends JSON.MapConverter {
     }
 
     /**
+     * Test that this sync is valid.
+     * Return null on success, and an error message on failure.
+     */
+    public String test() {
+        String sourceResult = source.test();
+        String destResult = dest.test();
+
+        List<String> results = new ArrayList<String>(2);
+
+        if (sourceResult != null) {
+            results.add(String.format("Source error: '%s'.", sourceResult));
+        }
+
+        if (destResult != null) {
+            results.add(String.format("Dest error: '%s'.", destResult));
+        }
+
+        if (results.size() == 0) {
+            return null;
+        }
+
+        return String.join(" ", results);
+    }
+
+    /**
      * Run a sync between the two locations.
      *
      * Syncing will happen one directory at a time in a breadth-first fashion.

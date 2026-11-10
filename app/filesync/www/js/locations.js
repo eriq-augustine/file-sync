@@ -5,6 +5,11 @@ import * as storage from './storage.js';
 const LOCATION_TYPE_LOCAL = 'dev.eriq.filesync.location.LocalLocation';
 const LOCATION_TYPE_SSH = 'dev.eriq.filesync.location.SSHLocation';
 
+const LOCATION_DEFAULTS = {
+    'base-dir': '.',
+    'port': 22,
+};
+
 function renderPage(request) {
     let locationsElement = renderExistingLocations();
     let addLocationElement = renderAddLocationArea();
@@ -64,7 +69,13 @@ function renderDisplayEditLocation(location, classes = []) {
     let editButton = document.createElement('button');
     editButton.textContent = 'Edit';
     editButton.addEventListener('click', function(event) {
-        body.replaceChildren(renderEditLocation(location));
+        if (editButton.textContent === 'Edit') {
+            editButton.textContent = 'Cancel Edit';
+            body.replaceChildren(renderEditLocation(location, 'Save Location'));
+        } else {
+            editButton.textContent = 'Edit';
+            body.replaceChildren(renderDisplayLocation(location));
+        }
     });
     header.appendChild(editButton);
 
@@ -80,11 +91,10 @@ function renderDisplayLocation(location) {
     return edq.render.code.block(edq.util.json.pretty(location), 'json');
 }
 
-function renderEditLocation(defaultValues = {}) {
-    Object.assign(defaultValues, {
-        'base-dir': '.',
-        'port': 22,
-    });
+function renderEditLocation(defaultValues = undefined, addButtonLabel = 'Add Location') {
+    if (defaultValues == null) {
+        defaultValues = structuredClone(LOCATION_DEFAULTS);
+    }
 
     let locationInputContainer = document.createElement('div');
     locationInputContainer.classList.add('edit-location');
@@ -167,7 +177,7 @@ function renderEditLocation(defaultValues = {}) {
     notificationArea.classList.add('display-notification');
 
     let addButton = document.createElement('button');
-    addButton.textContent = 'Add Location';
+    addButton.textContent = addButtonLabel;
     addButton.addEventListener('click', function(event) {
         let values = fieldSet.getValues();
         storage.saveLocation(values.name, values);
