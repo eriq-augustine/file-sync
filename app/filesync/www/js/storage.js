@@ -6,14 +6,20 @@ const STORAGE_KEY_LOCATIONS = STORAGE_KEY_PREFIX + 'locations';
 const STORAGE_KEY_LOGS = STORAGE_KEY_PREFIX + 'logs';
 
 // Get all jobs from storage.
-// Returns: [job, ...].
+// Returns: {name: job, ...}.
 function loadJobs() {
     let rawJobs = window.localStorage.getItem(STORAGE_KEY_JOBS);
     if (rawJobs == null) {
-        return [];
+        return {};
     }
 
     return JSON.parse(rawJobs);
+}
+
+// Get a job or undefined.
+function loadJob(name) {
+    let jobs = loadJobs();
+    return jobs[name];
 }
 
 // Overwrites any existing jobs.
@@ -22,21 +28,15 @@ function saveJobs(jobs) {
 }
 
 // Save a single job.
-function saveJob(index, job) {
+function saveJob(name, job) {
     let jobs = loadJobs();
-    jobs[index] = job;
+    jobs[name] = job;
     saveJobs(jobs);
 }
 
-function addJob(job) {
+function removeJob(name) {
     let jobs = loadJobs();
-    jobs.push(job);
-    saveJobs(jobs);
-}
-
-function removeJob(index) {
-    let jobs = loadJobs();
-    jobs.splice(index, 1);
+    delete jobs[name];
     saveJobs(jobs);
 }
 
@@ -98,9 +98,9 @@ function addLog(log) {
 }
 
 export {
+    loadJob,
     loadJobs,
     saveJob,
-    addJob,
     removeJob,
 
     loadLocation,

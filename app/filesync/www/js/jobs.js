@@ -1,6 +1,7 @@
 import * as edq from '../vendor/edq/js/edq.min.mjs';
 
 import * as storage from './storage.js';
+import * as logs from './logs.js';
 
 const JOB_DEFAULTS = {
     'schedule': '0 * * * *',
@@ -27,10 +28,8 @@ function renderAddJobArea() {
 
 function renderExistingJobs() {
     let children = [];
-
-    let jobs = storage.loadJobs();
-    for (let i = 0; i < jobs.length; i++) {
-        children.push(renderDisplayEditJob(jobs[i], i));
+    for (const [name, job] of Object.entries(storage.loadJobs())) {
+        children.push(renderDisplayEditJob(job));
     }
 
     let header = document.createElement('h3');
@@ -44,7 +43,7 @@ function renderExistingJobs() {
 }
 
 // Reder a job that can be displayed, with buttons to edit.
-function renderDisplayEditJob(job, jobIndex, classes = []) {
+function renderDisplayEditJob(job) {
     let header = document.createElement('div');
     header.classList.add('display-header');
 
@@ -53,14 +52,25 @@ function renderDisplayEditJob(job, jobIndex, classes = []) {
     body.replaceChildren(renderDisplayJob(job));
 
     let label = document.createElement('label');
-    label.textContent = `Job Index ${jobIndex}`;
+    label.textContent = job.name;
     header.appendChild(label);
+
+    let runNowButton = document.createElement('button');
+    runNowButton.textContent = 'Run Now';
+    runNowButton.addEventListener('click', function(event) {
+        if (window.confirm(`Confirm run of job '${job.name}'.`)) {
+            runJob(job);
+        }
+    });
+    header.appendChild(runNowButton);
 
     let deleteButton = document.createElement('button');
     deleteButton.textContent = 'Delete';
     deleteButton.addEventListener('click', function(event) {
-        storage.removeJob(jobIndex);
-        edq.core.routing.reload();
+        if (window.confirm(`Confirm deletion of job '${job.name}'.`)) {
+            storage.removeJob(job.name);
+            edq.core.routing.reload();
+        }
     });
     header.appendChild(deleteButton);
 
@@ -69,7 +79,7 @@ function renderDisplayEditJob(job, jobIndex, classes = []) {
     editButton.addEventListener('click', function(event) {
         if (editButton.textContent === 'Edit') {
             editButton.textContent = 'Cancel Edit';
-            body.replaceChildren(renderEditJob(job, jobIndex));
+            body.replaceChildren(renderEditJob(job, 'Save Job'));
         } else {
             editButton.textContent = 'Edit';
             body.replaceChildren(renderDisplayJob(job));
@@ -79,7 +89,6 @@ function renderDisplayEditJob(job, jobIndex, classes = []) {
 
     let container = document.createElement('div');
     container.classList.add('subsection');
-    container.classList.add(...classes);
     container.replaceChildren(header, body);
 
     return container;
@@ -89,7 +98,7 @@ function renderDisplayJob(job) {
     return edq.render.code.block(edq.util.json.pretty(job), 'json');
 }
 
-function renderEditJob(defaultValues = undefined, jobIndex = undefined) {
+function renderEditJob(defaultValues = undefined, addButtonLabel = 'Add Job') {
     if (defaultValues == null) {
         defaultValues = structuredClone(JOB_DEFAULTS);
     }
@@ -100,6 +109,14 @@ function renderEditJob(defaultValues = undefined, jobIndex = undefined) {
     }
 
     let fields = [
+        new edq.model.field.TextField({
+            name: 'name',
+            label: 'Name',
+            required: true,
+            minLength: 1,
+            defaultValue:
+            defaultValues['name'],
+        }),
         new edq.model.field.DropdownField({
             name: 'sourceName',
             label: 'Source',
@@ -152,20 +169,10 @@ function renderEditJob(defaultValues = undefined, jobIndex = undefined) {
     notificationArea.classList.add('display-notification');
 
     let addButton = document.createElement('button');
-    addButton.textContent = 'Add Job';
-    if (jobIndex != null) {
-        addButton.textContent = 'Save Job';
-    }
-
+    addButton.textContent = addButtonLabel;
     addButton.addEventListener('click', function(event) {
         let values = fieldSet.getValues();
-
-        if (jobIndex == null) {
-            storage.addJob(values);
-        } else {
-            storage.saveJob(jobIndex, values);
-        }
-
+        storage.saveJob(values.name, values);
         edq.core.routing.reload();
     });
 
@@ -196,35 +203,58 @@ function renderEditJob(defaultValues = undefined, jobIndex = undefined) {
 }
 
 // Compile a full job (that can be sent to the backend) from the job data (collected from inputs and stored).
-function compileJob(values) {
-    let source = storage.loadLocation(values.sourceName);
+function compileJob(jobData) {
+    let source = storage.loadLocation(jobData.sourceName);
     if (source == null) {
-        throw new Error(`Failed to compile job, could not find source location: '${values.sourceName}'.`);
+        throw new Error(`Failed to compile job, could not find source location: '${jobData.sourceName}'.`);
     }
 
-    let dest = storage.loadLocation(values.destName);
+    let dest = storage.loadLocation(jobData.destName);
     if (dest == null) {
-        throw new Error(`Failed to compile job, could not find dest location: '${values.destName}'.`);
+        throw new Error(`Failed to compile job, could not find dest location: '${jobData.destName}'.`);
     }
 
     return {
-        'schedule': values.schedule,
+        '__class__': 'dev.eriq.filesync.SyncJob',
+        'schedule': jobData.schedule,
         'sync': {
+            '__class__': 'dev.eriq.filesync.Sync',
             'source': source,
             'dest': dest,
-            'identity-checks': Object.values(values['identity-checks']),
-            'conflict-behavior': values['conflict-behavior'],
+            'identity-checks': Object.values(jobData['identity-checks']),
+            'conflict-behavior': jobData['conflict-behavior'],
         },
     };
 }
 
-function testJob(values, resultContainer) {
+function runJob(jobData) {
+    let job = null;
+    try {
+        job = compileJob(jobData);
+    } catch (error) {
+        storage.addLog(new logs.Log('Failed to start job.', {'jobName': jobData.name, 'error': error.message}));
+        return;
+    }
+
+    storage.addLog(new logs.Log('Starting job.', {'jobName': jobData.name}));
+
+    window.FileSync.sync(job)
+        .then(function(result) {
+            storage.addLog(new logs.Log('Job complete.', {'jobName': jobData.name}));
+        })
+        .catch(function(result) {
+            storage.addLog(new logs.Log('Job failed.', {'jobName': jobData.name}));
+        });
+    ;
+}
+
+function testJob(jobData, resultContainer) {
     resultContainer.textContent = 'Testing ...';
     resultContainer.classList.remove('theme-error');
 
     let job = null;
     try {
-        job = compileJob(values);
+        job = compileJob(jobData);
     } catch (error) {
         resultContainer.classList.add('theme-error');
         resultContainer.textContent = error.message;

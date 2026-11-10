@@ -3,7 +3,7 @@ import * as edq from '../vendor/edq/js/edq.min.mjs';
 import * as storage from './storage.js';
 
 class Log {
-    timestamp = edq.model.timestamp.Timestamp(0);
+    timestamp = 0;
     message = '';
     data = {};
 
@@ -50,7 +50,8 @@ function renderLog(index, log) {
 }
 
 export {
-    renderPage,
+    Log,
 
+    renderPage,
     renderLog,
 }

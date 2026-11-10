@@ -46,7 +46,7 @@ function renderExistingLocations() {
 }
 
 // Reder a location that can be displayed, with buttons to edit.
-function renderDisplayEditLocation(location, classes = []) {
+function renderDisplayEditLocation(location) {
     let header = document.createElement('div');
     header.classList.add('display-header');
 
@@ -61,8 +61,10 @@ function renderDisplayEditLocation(location, classes = []) {
     let deleteButton = document.createElement('button');
     deleteButton.textContent = 'Delete';
     deleteButton.addEventListener('click', function(event) {
-        storage.removeLocation(location.name);
-        edq.core.routing.reload();
+        if (window.confirm(`Confirm deletion of location '${location.name}'.`)) {
+            storage.removeLocation(location.name);
+            edq.core.routing.reload();
+        }
     });
     header.appendChild(deleteButton);
 
@@ -81,7 +83,6 @@ function renderDisplayEditLocation(location, classes = []) {
 
     let container = document.createElement('div');
     container.classList.add('subsection');
-    container.classList.add(...classes);
     container.replaceChildren(header, body);
 
     return container;
