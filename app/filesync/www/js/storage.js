@@ -1,20 +1,89 @@
 import * as edq from '../vendor/edq/js/edq.min.mjs';
 
-const STORAGE_KEY_PREFIX = 'dev.eriq.filesync.';
-const STORAGE_KEY_JOBS = STORAGE_KEY_PREFIX + 'jobs';
-const STORAGE_KEY_LOCATIONS = STORAGE_KEY_PREFIX + 'locations';
-const STORAGE_KEY_LOGS = STORAGE_KEY_PREFIX + 'logs';
+let cache = {};
 
-// Get all jobs from storage.
-// Returns: {name: job, ...}.
+const CACHE_KEY_JOBS = 'jobs';
+const CACHE_KEY_LOCATIONS = 'locations';
+
 function loadJobs() {
-    let rawJobs = window.localStorage.getItem(STORAGE_KEY_JOBS);
-    if (rawJobs == null) {
-        return {};
+    return loadWithCache(CACHE_KEY_JOBS, window.FileSync.getJobs);
+}
+
+function upsertJob(newJob) {
+    return upsertWithCache(CACHE_KEY_JOBS, newJob, window.FileSync.upsertJob);
+}
+
+function removeJob(name) {
+    return removeWithCache(CACHE_KEY_JOBS, name, window.FileSync.removeJob);
+}
+
+function loadLocations() {
+    return loadWithCache(CACHE_KEY_LOCATIONS, window.FileSync.getLocations);
+}
+
+function upsertLocation(newLocation) {
+    return upsertWithCache(CACHE_KEY_LOCATIONS, newLocation, window.FileSync.upsertLocation);
+}
+
+function removeLocation(name) {
+    return removeWithCache(CACHE_KEY_LOCATIONS, name, window.FileSync.removeLocation);
+}
+
+
+// TEST
+
+
+
+function loadWithCache(cacheKey, getFunction) {
+    if (cache[cacheKey] != null) {
+        return Promise.resolve(cache[cacheKey]);
     }
 
-    return JSON.parse(rawJobs);
+    return new Promise(function(resolve, reject) {
+        getFunction()
+            .then(function(items) {
+                cache[cacheKey] = items;
+                resolve(cache[cacheKey]);
+            })
+            .catch(function(error) {
+                throw new Error(error);
+            })
+        ;
+    });
 }
+
+function upsertWithCache(cacheKey, newItem, upsertFunction) {
+    return new Promise(function(resolve, reject) {
+        upsertFunction(newItem)
+            .then(function(result) {
+                cache[cacheKey] = null;
+                resolve(result);
+            })
+            .catch(function(error) {
+                throw new Error(error);
+            })
+        ;
+    });
+}
+
+function removeWithCache(cacheKey, itemName, removeFunction) {
+    return new Promise(function(resolve, reject) {
+        removeFunction(itemName)
+            .then(function(result) {
+                cache[cacheKey] = null;
+                resolve(result);
+            })
+            .catch(function(error) {
+                throw new Error(error);
+            })
+        ;
+    });
+}
+
+
+// TEST
+
+
 
 // Get a job or undefined.
 function loadJob(name) {
@@ -34,23 +103,6 @@ function saveJob(name, job) {
     saveJobs(jobs);
 }
 
-function removeJob(name) {
-    let jobs = loadJobs();
-    delete jobs[name];
-    saveJobs(jobs);
-}
-
-// Get all locations from storage.
-// Returns: {name: location, ...}.
-function loadLocations() {
-    let rawLocations = window.localStorage.getItem(STORAGE_KEY_LOCATIONS);
-    if (rawLocations == null) {
-        return {};
-    }
-
-    return JSON.parse(rawLocations);
-}
-
 // Get a location or undefined.
 function loadLocation(name) {
     let locations = loadLocations();
@@ -66,12 +118,6 @@ function saveLocations(locations) {
 function saveLocation(name, location) {
     let locations = loadLocations();
     locations[name] = location;
-    saveLocations(locations);
-}
-
-function removeLocation(name) {
-    let locations = loadLocations();
-    delete locations[name];
     saveLocations(locations);
 }
 
@@ -100,12 +146,12 @@ function addLog(log) {
 export {
     loadJob,
     loadJobs,
-    saveJob,
+    upsertJob,
     removeJob,
 
     loadLocation,
     loadLocations,
-    saveLocation,
+    upsertLocation,
     removeLocation,
 
     loadLogs,

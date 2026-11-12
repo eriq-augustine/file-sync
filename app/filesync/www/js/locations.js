@@ -30,19 +30,21 @@ function renderAddLocationArea() {
 }
 
 function renderExistingLocations() {
-    let children = [];
-    for (const [name, location] of Object.entries(storage.loadLocations())) {
-        children.push(renderDisplayEditLocation(location));
-    }
+    let container = document.createElement('div');
+
+    storage.loadLocations().then(function(locations) {
+        for (const location of locations) {
+            container.appendChild(renderDisplayEditLocation(location));
+        }
+    });
 
     let header = document.createElement('h3');
     header.textContent = 'Current Locations';
 
-    let element = document.createElement('div');
-    element.classList.add('existing-locations', 'section', 'theme-secondary');
-    element.replaceChildren(header, ...children);
+    container.classList.add('existing-locations', 'section', 'theme-secondary');
+    container.replaceChildren(header);
 
-    return element;
+    return container;
 }
 
 // Reder a location that can be displayed, with buttons to edit.
@@ -62,8 +64,9 @@ function renderDisplayEditLocation(location) {
     deleteButton.textContent = 'Delete';
     deleteButton.addEventListener('click', function(event) {
         if (window.confirm(`Confirm deletion of location '${location.name}'.`)) {
-            storage.removeLocation(location.name);
-            edq.core.routing.reload();
+            storage.removeLocation(location.name).then(function() {
+                edq.core.routing.reload();
+            });
         }
     });
     header.appendChild(deleteButton);
@@ -181,8 +184,9 @@ function renderEditLocation(defaultValues = undefined, addButtonLabel = 'Add Loc
     addButton.textContent = addButtonLabel;
     addButton.addEventListener('click', function(event) {
         let values = fieldSet.getValues();
-        storage.saveLocation(values.name, values);
-        edq.core.routing.reload();
+        storage.upsertLocation(values).then(function() {
+            edq.core.routing.reload();
+        });
     });
 
     let testButton = document.createElement('button');
@@ -224,7 +228,7 @@ function testLocation(values, resultContainer) {
         .catch(function(result) {
             resultContainer.classList.add('theme-error');
             resultContainer.textContent = `Location test crashed: '${result}'.`;
-        });
+        })
     ;
 }
 

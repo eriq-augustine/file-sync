@@ -27,19 +27,21 @@ function renderAddJobArea() {
 }
 
 function renderExistingJobs() {
-    let children = [];
-    for (const [name, job] of Object.entries(storage.loadJobs())) {
-        children.push(renderDisplayEditJob(job));
-    }
+    let container = document.createElement('div');
+
+    storage.loadJobs().then(function(jobs) {
+        for (const job of jobs) {
+            container.appendChild(renderDisplayEditJob(job));
+        }
+    });
 
     let header = document.createElement('h3');
     header.textContent = 'Current Jobs';
 
-    let element = document.createElement('div');
-    element.classList.add('existing-jobs', 'section', 'theme-secondary');
-    element.replaceChildren(header, ...children);
+    container.classList.add('existing-jobs', 'section', 'theme-secondary');
+    container.replaceChildren(header);
 
-    return element;
+    return container;
 }
 
 // Reder a job that can be displayed, with buttons to edit.
@@ -68,6 +70,7 @@ function renderDisplayEditJob(job) {
     deleteButton.textContent = 'Delete';
     deleteButton.addEventListener('click', function(event) {
         if (window.confirm(`Confirm deletion of job '${job.name}'.`)) {
+            // TEST
             storage.removeJob(job.name);
             edq.core.routing.reload();
         }
@@ -104,6 +107,7 @@ function renderEditJob(defaultValues = undefined, addButtonLabel = 'Add Job') {
     }
 
     let locationChoices = {};
+    // TEST
     for (const locationName of Object.keys(storage.loadLocations())) {
         locationChoices[locationName] = locationName;
     }
@@ -172,6 +176,7 @@ function renderEditJob(defaultValues = undefined, addButtonLabel = 'Add Job') {
     addButton.textContent = addButtonLabel;
     addButton.addEventListener('click', function(event) {
         let values = fieldSet.getValues();
+        // TEST
         storage.saveJob(values.name, values);
         edq.core.routing.reload();
     });
@@ -204,11 +209,13 @@ function renderEditJob(defaultValues = undefined, addButtonLabel = 'Add Job') {
 
 // Compile a full job (that can be sent to the backend) from the job data (collected from inputs and stored).
 function compileJob(jobData) {
+    // TEST
     let source = storage.loadLocation(jobData.sourceName);
     if (source == null) {
         throw new Error(`Failed to compile job, could not find source location: '${jobData.sourceName}'.`);
     }
 
+    // TEST
     let dest = storage.loadLocation(jobData.destName);
     if (dest == null) {
         throw new Error(`Failed to compile job, could not find dest location: '${jobData.destName}'.`);
@@ -227,6 +234,7 @@ function compileJob(jobData) {
     };
 }
 
+// TEST - Storage
 function runJob(jobData) {
     let job = null;
     try {
