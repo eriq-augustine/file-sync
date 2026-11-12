@@ -31,12 +31,12 @@ public class JSONTest {
         List<TestCase> testCases = List.of(
             new TestCase(
                 new EmptyLocation(),
-                String.format("{\"__class__\": \"%s\", \"base-dir\": \"\"}", EmptyLocation.class.getName())
+                String.format("{\"__class__\": \"%s\", \"base-dir\": \"\", \"name\": \"\"}", EmptyLocation.class.getName())
             ),
 
             new TestCase(
                 new LocalLocation(Path.of("foo")),
-                String.format("{\"__class__\": \"%s\", \"base-dir\": \"%s\"}", LocalLocation.class.getName(), Path.of("foo").toAbsolutePath())
+                String.format("{\"__class__\": \"%s\", \"base-dir\": \"%s\", \"name\": \"\"}", LocalLocation.class.getName(), Path.of("foo").toAbsolutePath())
             ),
 
             new TestCase(
@@ -44,6 +44,7 @@ public class JSONTest {
                 String.format(String.join("\n",
                     "{",
                         "\"__class__\": \"%s\",",
+                        "\"name\": \"\",",
                         "\"base-dir\": \"foo\",",
                         "\"hostname\": \"host\",",
                         "\"port\": 1234,",
@@ -64,8 +65,8 @@ public class JSONTest {
                 String.format(String.join("\n",
                     "{",
                         "\"__class__\": \"%s\",",
-                        "\"source\": {\"__class__\": \"%s\", \"base-dir\": \"\"},",
-                        "\"dest\": {\"__class__\": \"%s\", \"base-dir\": \"%s\"},",
+                        "\"source\": {\"__class__\": \"%s\", \"base-dir\": \"\", \"name\": \"\"},",
+                        "\"dest\": {\"__class__\": \"%s\", \"base-dir\": \"%s\", \"name\": \"\"},",
                         "\"identity-checks\": [],",
                         "\"conflict-behavior\": \"SKIP\",",
                     "}").trim(),
@@ -87,8 +88,8 @@ public class JSONTest {
                 String.format(String.join("\n",
                     "{",
                         "\"__class__\": \"%s\",",
-                        "\"source\": {\"__class__\": \"%s\", \"base-dir\": \"\"},",
-                        "\"dest\": {\"__class__\": \"%s\", \"base-dir\": \"%s\"},",
+                        "\"source\": {\"__class__\": \"%s\", \"base-dir\": \"\", \"name\": \"\"},",
+                        "\"dest\": {\"__class__\": \"%s\", \"base-dir\": \"%s\", \"name\": \"\"},",
                         "\"identity-checks\": [\"SIZE\"],",
                         "\"conflict-behavior\": \"OVERWRITE\",",
                     "}").trim(),
@@ -110,8 +111,8 @@ public class JSONTest {
                 String.format(String.join("\n",
                     "{",
                         "\"__class__\": \"%s\",",
-                        "\"source\": {\"__class__\": \"%s\", \"base-dir\": \"\"},",
-                        "\"dest\": {\"__class__\": \"%s\", \"base-dir\": \"%s\"},",
+                        "\"source\": {\"__class__\": \"%s\", \"base-dir\": \"\", \"name\": \"\"},",
+                        "\"dest\": {\"__class__\": \"%s\", \"base-dir\": \"%s\", \"name\": \"\"},",
                         "\"identity-checks\": [\"MODTIME\", \"SIZE\"],",
                         "\"conflict-behavior\": \"OVERWRITE\",",
                     "}").trim(),
@@ -133,11 +134,12 @@ public class JSONTest {
                 String.format(String.join("\n",
                     "{",
                         "\"__class__\": \"%s\",",
+                        "\"name\": \"\",",
                         "\"schedule\": \"0 4 * * *\",",
                         "\"sync\": {",
                             "\"__class__\": \"%s\",",
-                            "\"source\": {\"__class__\": \"%s\", \"base-dir\": \"\"},",
-                            "\"dest\": {\"__class__\": \"%s\", \"base-dir\": \"%s\"},",
+                            "\"source\": {\"__class__\": \"%s\", \"base-dir\": \"\", \"name\": \"\"},",
+                            "\"dest\": {\"__class__\": \"%s\", \"base-dir\": \"%s\", \"name\": \"\"},",
                             "\"identity-checks\": [],",
                             "\"conflict-behavior\": \"SKIP\",",
                         "}",

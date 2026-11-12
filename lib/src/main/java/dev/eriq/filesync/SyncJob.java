@@ -22,28 +22,36 @@ import java.util.Map;
  *  - <a href="https://crontab.guru/">Helper Tool</a>
  */
 public class SyncJob extends JSON.MapConverter {
+    private String name;
     private Cron schedule;
     private Sync sync;
 
-    public SyncJob(Cron schedule, Sync sync) {
+    public SyncJob(String name, Cron schedule, Sync sync) {
+        this.name = name;
         this.schedule = schedule;
         this.sync = sync;
     }
 
     public SyncJob(String scheduleText, Sync sync) {
-        this(parseSchedule(scheduleText), sync);
+        this("", parseSchedule(scheduleText), sync);
+    }
+
+    public String getName() {
+        return name;
     }
 
     protected void serializeToMap(Map<String, Object> data) {
+        data.put("name", name);
         data.put("schedule", schedule.asString());
         data.put("sync", sync.toMap());
     }
 
     public static Object fromMap(Map<String, Object> data) {
+        String name = data.getOrDefault("name", "").toString();
         Cron schedule = parseSchedule(data.get("schedule").toString());
         Sync sync = (Sync)(JSON.fromMap((Map)(data.get("sync"))));
 
-        return new SyncJob(schedule, sync);
+        return new SyncJob(name, schedule, sync);
     }
 
     public boolean equals(Object other) {

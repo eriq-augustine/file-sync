@@ -57,7 +57,7 @@ public class SSHLocation extends Location {
      *
      * Either a password or (private and public keys) are required.
      */
-    public SSHLocation(String hostname, int port, String username, String password, String privateKey, String publicKey, String baseDir) {
+    public SSHLocation(String name, String hostname, int port, String username, String password, String privateKey, String publicKey, String baseDir) {
         super(baseDir);
 
         username = StringUtils.nullEmptyString(username);
@@ -89,6 +89,10 @@ public class SSHLocation extends Location {
         sftpChannel = null;
     }
 
+    public SSHLocation(String hostname, int port, String username, String password, String privateKey, String publicKey, String baseDir) {
+        this("", hostname, port, username, password, privateKey, publicKey, baseDir);
+    }
+
     /**
      * Convenience constructor when using password authentication.
      */
@@ -115,6 +119,7 @@ public class SSHLocation extends Location {
     }
 
     public static Object fromMap(Map<String, Object> data) {
+        String name = data.getOrDefault("name", "").toString();
         String hostname = data.get("hostname").toString();
         int port = Integer.parseInt(data.get("port").toString());
         String username = data.get("username").toString();
@@ -123,7 +128,7 @@ public class SSHLocation extends Location {
         String publicKey = StringUtils.nullOrToString(data.get("public-key"));
         String baseDir = data.get("base-dir").toString();
 
-        return new SSHLocation(hostname, port, username, password, privateKey, publicKey, baseDir);
+        return new SSHLocation(name, hostname, port, username, password, privateKey, publicKey, baseDir);
     }
 
     public boolean equals(Object other) {

@@ -21,12 +21,19 @@ import java.util.Map;
  * A location that exists on the current machine.
  */
 public class LocalLocation extends Location {
+    public LocalLocation(String name, Path baseDir) {
+        super(name, baseDir.toAbsolutePath().toString());
+    }
+
     public LocalLocation(Path baseDir) {
-        super(baseDir.toAbsolutePath().toString());
+        this("", baseDir);
     }
 
     public static Object fromMap(Map<String, Object> map) {
-        return new LocalLocation(Path.of(map.get("base-dir").toString()));
+        String name = map.getOrDefault("name", "").toString();
+        Path baseDir = Path.of(map.get("base-dir").toString());
+
+        return new LocalLocation(name, baseDir);
     }
 
     public void open() {

@@ -39,8 +39,19 @@ public abstract class Location extends JSON.MapConverter implements AutoCloseabl
      */
     protected String baseDir;
 
-    public Location(String baseDir) {
+    private String name;
+
+    public Location(String name, String baseDir) {
+        this.name = name;
         this.baseDir = baseDir;
+    }
+
+    public Location(String baseDir) {
+        this("", baseDir);
+    }
+
+    public String getName() {
+        return name;
     }
 
     /**
@@ -70,6 +81,7 @@ public abstract class Location extends JSON.MapConverter implements AutoCloseabl
     }
 
     protected void serializeToMap(Map<String, Object> data) {
+        data.put("name", name);
         data.put("base-dir", baseDir);
     }
 
@@ -83,7 +95,7 @@ public abstract class Location extends JSON.MapConverter implements AutoCloseabl
         }
 
         Location otherLocation = (Location)other;
-        return this.baseDir.equals(otherLocation.baseDir);
+        return (this.name.equals(otherLocation.name) && this.baseDir.equals(otherLocation.baseDir));
     }
 
     /**
