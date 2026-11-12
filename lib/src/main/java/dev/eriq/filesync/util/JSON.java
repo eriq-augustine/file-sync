@@ -3,12 +3,14 @@ package dev.eriq.filesync.util;
 import dev.eriq.filesync.errors.BadInputError;
 import dev.eriq.filesync.errors.NotSupportedError;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.json.JSONException;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -79,6 +81,23 @@ public class JSON {
 
     public static String toJSON(MapConverter object, boolean pretty, boolean sort) {
         return object.toJSON(pretty, sort);
+    }
+
+    public static String toJSON(List<? extends MapConverter> objects) {
+        return toJSON(objects, false);
+    }
+
+    public static String toJSON(List<? extends MapConverter> objects, boolean pretty) {
+        JSONArray array = new JSONArray(objects.size());
+        for (MapConverter object : objects) {
+            array.put(object.toMap());
+        }
+
+        if (pretty) {
+            return array.toString(INDENT);
+        }
+
+        return array.toString();
     }
 
     public static Object fromJSON(String text) {
