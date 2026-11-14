@@ -25,12 +25,14 @@ public class FileSyncPlugin extends CordovaPlugin {
     private static final String ACTION_TEST_JOB = "test-job";
     private static final String ACTION_VERSION = "version";
 
-    private static final String ACTION_DB_GET_JOBS = "db-get-jobs";
-    private static final String ACTION_DB_REMOVE_JOB = "db-remove-job";
-    private static final String ACTION_DB_UPSERT_JOB = "db-upsert-job";
-    private static final String ACTION_DB_GET_LOCATIONS = "db-get-locations";
-    private static final String ACTION_DB_REMOVE_LOCATION = "db-remove-location";
-    private static final String ACTION_DB_UPSERT_LOCATION = "db-upsert-location";
+    private static final String ACTION_DB_JOBS_GET = "db-jobs-get";
+    private static final String ACTION_DB_JOBS_REMOVE = "db-jobs-remove";
+    private static final String ACTION_DB_JOBS_UPSERT = "db-jobs-upsert";
+    private static final String ACTION_DB_LOCATIONS_GET = "db-locations-get";
+    private static final String ACTION_DB_LOCATIONS_REMOVE = "db-locations-remove";
+    private static final String ACTION_DB_LOCATIONS_UPSERT = "db-locations-upsert";
+    private static final String ACTION_DB_LOGS_GET = "db-logs-get";
+    private static final String ACTION_DB_LOGS_APPEND = "db-logs-append";
 
     private Database db;
 
@@ -71,23 +73,29 @@ public class FileSyncPlugin extends CordovaPlugin {
 
     public void dispatchAction(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
         switch (action) {
-            case ACTION_DB_GET_JOBS:
+            case ACTION_DB_JOBS_GET:
                 getJobs(callbackContext);
                 return;
-            case ACTION_DB_REMOVE_JOB:
+            case ACTION_DB_JOBS_REMOVE:
                 removeJob(args.getString(0), callbackContext);
                 return;
-            case ACTION_DB_UPSERT_JOB:
+            case ACTION_DB_JOBS_UPSERT:
                 upsertJob(args.getJSONObject(0), callbackContext);
                 return;
-            case ACTION_DB_GET_LOCATIONS:
+            case ACTION_DB_LOCATIONS_GET:
                 getLocations(callbackContext);
                 return;
-            case ACTION_DB_REMOVE_LOCATION:
+            case ACTION_DB_LOCATIONS_REMOVE:
                 removeLocation(args.getString(0), callbackContext);
                 return;
-            case ACTION_DB_UPSERT_LOCATION:
+            case ACTION_DB_LOCATIONS_UPSERT:
                 upsertLocation(args.getJSONObject(0), callbackContext);
+                return;
+            case ACTION_DB_LOGS_GET:
+                getLogs(args.getInt(0), callbackContext);
+                return;
+            case ACTION_DB_LOGS_APPEND:
+                appendLog(args.getString(0), args.getJSONObject(1), callbackContext);
                 return;
             case ACTION_SYNC:
                 sync(args.getJSONObject(0), callbackContext);
@@ -151,6 +159,16 @@ public class FileSyncPlugin extends CordovaPlugin {
         callbackContext.success(db.removeLocation(name));
     }
 
+    private void getLogs(int limit, CallbackContext callbackContext) {
+        List<Database.LogRecord> records = db.getLogs(limit);
+        callbackContext.success(JSON.toJSON(records));
+    }
+
+    private void appendLog(String mssage, JSONObject data, CallbackContext callbackContext) {
+        callbackContext.success(db.appendLog(message, data));
+    }
+
+    // TEST - Job data now has name of location, not JSON location (will need to specify __class__).
     private void sync(JSONObject data, CallbackContext callbackContext) {
         SyncJob job = null;
         try {
@@ -168,6 +186,7 @@ public class FileSyncPlugin extends CordovaPlugin {
         }
     }
 
+    // TEST - Job data now has name of location, not JSON location (will need to specify __class__).
     private void testJob(JSONObject data, CallbackContext callbackContext) {
         SyncJob job = null;
         try {

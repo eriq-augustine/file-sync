@@ -8,12 +8,14 @@ const ACTION_TEST_JOB = 'test-job';
 const ACTION_TEST_LOCATION = 'test-location';
 const ACTION_VERSION = 'version';
 
-const ACTION_DB_GET_JOBS = "db-get-jobs";
-const ACTION_DB_REMOVE_JOB = "db-remove-job";
-const ACTION_DB_UPSERT_JOB = "db-upsert-job";
-const ACTION_DB_GET_LOCATIONS = "db-get-locations";
-const ACTION_DB_REMOVE_LOCATION = "db-remove-location";
-const ACTION_DB_UPSERT_LOCATION = "db-upsert-location";
+const ACTION_DB_JOBS_GET = "db-jobs-get";
+const ACTION_DB_JOBS_REMOVE = "db-jobs-remove";
+const ACTION_DB_JOBS_UPSERT = "db-jobs-upsert";
+const ACTION_DB_LOCATIONS_GET = "db-locations-get";
+const ACTION_DB_LOCATIONS_REMOVE = "db-locations-remove";
+const ACTION_DB_LOCATIONS_UPSERT = "db-locations-upsert";
+const ACTION_DB_LOGS_GET = "db-logs-get";
+const ACTION_DB_LOGS_APPEND = "db-logs-append";
 
 // We will mock storage to use in browser testing.
 const STORAGE_KEY_PREFIX = 'dev.eriq.filesync.';
@@ -25,7 +27,7 @@ const FileSync = function () { };
 
 FileSync.prototype.getJobs = function() {
     if (window.cordova.platformId !== BROWSER_PLATFORM) {
-        return createPluginPromise(ACTION_DB_GET_JOBS, []);
+        return createPluginPromise(ACTION_DB_JOBS_GET, []);
     }
 
     return localGetList(STORAGE_KEY_JOBS);
@@ -33,7 +35,7 @@ FileSync.prototype.getJobs = function() {
 
 FileSync.prototype.upsertJob = function(newJob) {
     if (window.cordova.platformId !== BROWSER_PLATFORM) {
-        return createPluginPromise(ACTION_DB_UPSERT_JOB, [newJob]);
+        return createPluginPromise(ACTION_DB_JOBS_UPSERT, [newJob]);
     }
 
     return localUpsertFromListByName(STORAGE_KEY_JOBS, newJob);
@@ -41,21 +43,15 @@ FileSync.prototype.upsertJob = function(newJob) {
 
 FileSync.prototype.removeJob = function(newJob) {
     if (window.cordova.platformId !== BROWSER_PLATFORM) {
-        return createPluginPromise(ACTION_DB_REMOVE_JOB, [newJob]);
+        return createPluginPromise(ACTION_DB_JOBS_REMOVE, [newJob]);
     }
 
     return localRemoveFromListByName(STORAGE_KEY_JOBS, newJob);
 };
 
-
-
-// TEST
-
-
-
 FileSync.prototype.getLocations = function() {
     if (window.cordova.platformId !== BROWSER_PLATFORM) {
-        return createPluginPromise(ACTION_DB_GET_LOCATIONS, []);
+        return createPluginPromise(ACTION_DB_LOCATIONS_GET, []);
     }
 
     return localGetList(STORAGE_KEY_LOCATIONS);
@@ -63,7 +59,7 @@ FileSync.prototype.getLocations = function() {
 
 FileSync.prototype.upsertLocation = function(newLocation) {
     if (window.cordova.platformId !== BROWSER_PLATFORM) {
-        return createPluginPromise(ACTION_DB_UPSERT_LOCATION, [newLocation]);
+        return createPluginPromise(ACTION_DB_LOCATIONS_UPSERT, [newLocation]);
     }
 
     return localUpsertFromListByName(STORAGE_KEY_LOCATIONS, newLocation);
@@ -71,15 +67,47 @@ FileSync.prototype.upsertLocation = function(newLocation) {
 
 FileSync.prototype.removeLocation = function(newLocation) {
     if (window.cordova.platformId !== BROWSER_PLATFORM) {
-        return createPluginPromise(ACTION_DB_REMOVE_LOCATION, [newLocation]);
+        return createPluginPromise(ACTION_DB_LOCATIONS_REMOVE, [newLocation]);
     }
 
     return localRemoveFromListByName(STORAGE_KEY_LOCATIONS, newLocation);
 };
 
+FileSync.prototype.getLogs = function(limit = 0) {
+    if (window.cordova.platformId !== BROWSER_PLATFORM) {
+        return createPluginPromise(ACTION_DB_LOGS_GET, [limit]);
+    }
 
-// TEST
+    let logs = localGetList(STORAGE_KEY_LOGS);
+    if (limit > 0) {
+        return logs.slice(0, limit);
+    }
 
+    return logs;
+};
+
+FileSync.prototype.appendLog = function(message, data = undefined) {
+    if (window.cordova.platformId !== BROWSER_PLATFORM) {
+        return createPluginPromise(ACTION_DB_LOGS_APPEND, [newLocation]);
+    }
+
+    let items = window.localStorage.getItem(STORAGE_KEY_LOGS);
+    if (items == null) {
+        items = [];
+    } else {
+        items = JSON.parse(items);
+    }
+
+    items.push({
+        timestamp: (new Date()).valueOf(),
+        message: message,
+        data: data,
+    });
+
+    window.localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(items));
+
+    return Promise.resolve(true);
+};
 
 function localGetList(key) {
     let items = window.localStorage.getItem(key);
@@ -140,11 +168,6 @@ function localRemoveFromListByName(key, name) {
 
     return Promise.resolve(removeIndex != null);
 }
-
-
-
-// TEST
-
 
 FileSync.prototype.sync = function(jobData) {
     if (window.cordova.platformId === BROWSER_PLATFORM) {

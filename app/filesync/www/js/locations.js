@@ -32,7 +32,7 @@ function renderAddLocationArea() {
 function renderExistingLocations() {
     let container = document.createElement('div');
 
-    storage.loadLocations().then(function(locations) {
+    edq.render.loading.withPromise(storage.loadLocations(), container).then(function(locations) {
         for (const location of locations) {
             container.appendChild(renderDisplayEditLocation(location));
         }
@@ -64,7 +64,7 @@ function renderDisplayEditLocation(location) {
     deleteButton.textContent = 'Delete';
     deleteButton.addEventListener('click', function(event) {
         if (window.confirm(`Confirm deletion of location '${location.name}'.`)) {
-            storage.removeLocation(location.name).then(function() {
+            edq.render.loading.withPromise(storage.removeLocation(location.name)).then(function() {
                 edq.core.routing.reload();
             });
         }
@@ -183,8 +183,7 @@ function renderEditLocation(defaultValues = undefined, addButtonLabel = 'Add Loc
     let addButton = document.createElement('button');
     addButton.textContent = addButtonLabel;
     addButton.addEventListener('click', function(event) {
-        let values = fieldSet.getValues();
-        storage.upsertLocation(values).then(function() {
+        edq.render.loading.withPromise(storage.upsertLocation(fieldSet.getValues())).then(function() {
             edq.core.routing.reload();
         });
     });

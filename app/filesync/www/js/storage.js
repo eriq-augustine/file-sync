@@ -29,10 +29,31 @@ function removeLocation(name) {
     return removeWithCache(CACHE_KEY_LOCATIONS, name, window.FileSync.removeLocation);
 }
 
+function loadLogs(limit = 0) {
+    return new Promise(function(resolve, reject) {
+        window.FileSync.getLogs(limit)
+            .then(function(items) {
+                resolve(items);
+            })
+            .catch(function(error) {
+                throw new Error(error);
+            })
+        ;
+    });
+}
 
-// TEST
-
-
+function appendLog(message, data = undefined) {
+    return new Promise(function(resolve, reject) {
+        window.FileSync.appendLog(message, data)
+            .then(function(items) {
+                resolve(true);
+            })
+            .catch(function(error) {
+                throw new Error(error);
+            })
+        ;
+    });
+}
 
 function loadWithCache(cacheKey, getFunction) {
     if (cache[cacheKey] != null) {
@@ -80,80 +101,15 @@ function removeWithCache(cacheKey, itemName, removeFunction) {
     });
 }
 
-
-// TEST
-
-
-
-// Get a job or undefined.
-function loadJob(name) {
-    let jobs = loadJobs();
-    return jobs[name];
-}
-
-// Overwrites any existing jobs.
-function saveJobs(jobs) {
-    window.localStorage.setItem(STORAGE_KEY_JOBS, edq.util.json.stringify(jobs));
-}
-
-// Save a single job.
-function saveJob(name, job) {
-    let jobs = loadJobs();
-    jobs[name] = job;
-    saveJobs(jobs);
-}
-
-// Get a location or undefined.
-function loadLocation(name) {
-    let locations = loadLocations();
-    return locations[name];
-}
-
-// Overwrites any existing locations.
-function saveLocations(locations) {
-    window.localStorage.setItem(STORAGE_KEY_LOCATIONS, edq.util.json.stringify(locations));
-}
-
-// Save a single location.
-function saveLocation(name, location) {
-    let locations = loadLocations();
-    locations[name] = location;
-    saveLocations(locations);
-}
-
-// Get all logs from storage.
-// Returns: [log, ...].
-function loadLogs() {
-    let rawLogs = window.localStorage.getItem(STORAGE_KEY_LOGS);
-    if (rawLogs == null) {
-        return [];
-    }
-
-    return JSON.parse(rawLogs);
-}
-
-// Overwrites any existing logs.
-function saveLogs(logs) {
-    window.localStorage.setItem(STORAGE_KEY_LOGS, edq.util.json.stringify(logs));
-}
-
-function addLog(log) {
-    let logs = loadLogs();
-    logs.push(log);
-    saveLogs(logs);
-}
-
 export {
-    loadJob,
     loadJobs,
     upsertJob,
     removeJob,
 
-    loadLocation,
     loadLocations,
     upsertLocation,
     removeLocation,
 
     loadLogs,
-    addLog,
+    appendLog,
 }

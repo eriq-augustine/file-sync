@@ -67,6 +67,21 @@ public class Database extends SQLiteOpenHelper {
         return false;
     }
 
+    /**
+     * Get log records.
+     * A limit <= 0 will fetch all records.
+     */
+    public List<LogRecord> getLogs(int limit) {
+        // TEST
+        return null;
+    }
+
+    public void appendLog(String message, JSONObject data) {
+        // TEST
+
+        // TEST - Check for null, JSON null, and empty on data.
+    }
+
     private void createAll(SQLiteDatabase db) {
         db.execSQL(SQL_CREATE_LOCATIONS);
     }
@@ -85,4 +100,8 @@ public class Database extends SQLiteOpenHelper {
     private static final String SQL_DROP_LOCATIONS = String.join("\n",
         "DROP TABLE IF EXISTS Locations;"
     );
+
+    // TEST
+    private static class LogRecord {
+    }
 }

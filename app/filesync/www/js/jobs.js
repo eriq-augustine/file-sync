@@ -29,7 +29,7 @@ function renderAddJobArea() {
 function renderExistingJobs() {
     let container = document.createElement('div');
 
-    storage.loadJobs().then(function(jobs) {
+    edq.render.loading.withPromise(storage.loadJobs(), container).then(function(jobs) {
         for (const job of jobs) {
             container.appendChild(renderDisplayEditJob(job));
         }
@@ -61,7 +61,7 @@ function renderDisplayEditJob(job) {
     runNowButton.textContent = 'Run Now';
     runNowButton.addEventListener('click', function(event) {
         if (window.confirm(`Confirm run of job '${job.name}'.`)) {
-            runJob(job);
+            window.FileSync.sync(job);
         }
     });
     header.appendChild(runNowButton);
@@ -70,9 +70,9 @@ function renderDisplayEditJob(job) {
     deleteButton.textContent = 'Delete';
     deleteButton.addEventListener('click', function(event) {
         if (window.confirm(`Confirm deletion of job '${job.name}'.`)) {
-            // TEST
-            storage.removeJob(job.name);
-            edq.core.routing.reload();
+            edq.render.loading.withPromise(storage.removeJob(job.name)).then(function () {
+                edq.core.routing.reload();
+            });
         }
     });
     header.appendChild(deleteButton);
@@ -106,10 +106,21 @@ function renderEditJob(defaultValues = undefined, addButtonLabel = 'Add Job') {
         defaultValues = structuredClone(JOB_DEFAULTS);
     }
 
+    let jobInputContainer = document.createElement('div');
+    jobInputContainer.classList.add('edit-job');
+    jobInputContainer.dataset['type'] = defaultValues['__class__'];
+
+    edq.render.loading.withPromise(storage.loadLocations(), jobInputContainer).then(function(locations) {
+        _renderEditJobWithLocations(defaultValues, addButtonLabel, jobInputContainer, locations);
+    });
+
+    return jobInputContainer;
+}
+
+function _renderEditJobWithLocations(defaultValues, addButtonLabel, jobInputContainer, locations) {
     let locationChoices = {};
-    // TEST
-    for (const locationName of Object.keys(storage.loadLocations())) {
-        locationChoices[locationName] = locationName;
+    for (const location of locations) {
+        locationChoices[location.name] = location.name;
     }
 
     let fields = [
@@ -175,10 +186,9 @@ function renderEditJob(defaultValues = undefined, addButtonLabel = 'Add Job') {
     let addButton = document.createElement('button');
     addButton.textContent = addButtonLabel;
     addButton.addEventListener('click', function(event) {
-        let values = fieldSet.getValues();
-        // TEST
-        storage.saveJob(values.name, values);
-        edq.core.routing.reload();
+        edq.render.loading.withPromise(storage.upsertJob(fieldSet.getValues())).then(function() {
+            edq.core.routing.reload();
+        });
     });
 
     let testButton = document.createElement('button');
@@ -199,77 +209,16 @@ function renderEditJob(defaultValues = undefined, addButtonLabel = 'Add Job') {
     header.classList.add('display-header');
     header.replaceChildren(addButton, testButton);
 
-    let jobInputContainer = document.createElement('div');
-    jobInputContainer.classList.add('edit-job');
-    jobInputContainer.dataset['type'] = defaultValues['__class__'];
     jobInputContainer.replaceChildren(header, notificationArea, fieldSet.element);
 
     return jobInputContainer;
-}
-
-// Compile a full job (that can be sent to the backend) from the job data (collected from inputs and stored).
-function compileJob(jobData) {
-    // TEST
-    let source = storage.loadLocation(jobData.sourceName);
-    if (source == null) {
-        throw new Error(`Failed to compile job, could not find source location: '${jobData.sourceName}'.`);
-    }
-
-    // TEST
-    let dest = storage.loadLocation(jobData.destName);
-    if (dest == null) {
-        throw new Error(`Failed to compile job, could not find dest location: '${jobData.destName}'.`);
-    }
-
-    return {
-        '__class__': 'dev.eriq.filesync.SyncJob',
-        'schedule': jobData.schedule,
-        'sync': {
-            '__class__': 'dev.eriq.filesync.Sync',
-            'source': source,
-            'dest': dest,
-            'identity-checks': Object.values(jobData['identity-checks']),
-            'conflict-behavior': jobData['conflict-behavior'],
-        },
-    };
-}
-
-// TEST - Storage
-function runJob(jobData) {
-    let job = null;
-    try {
-        job = compileJob(jobData);
-    } catch (error) {
-        storage.addLog(new logs.Log('Failed to start job.', {'jobName': jobData.name, 'error': error.message}));
-        return;
-    }
-
-    storage.addLog(new logs.Log('Starting job.', {'jobName': jobData.name}));
-
-    window.FileSync.sync(job)
-        .then(function(result) {
-            storage.addLog(new logs.Log('Job complete.', {'jobName': jobData.name}));
-        })
-        .catch(function(result) {
-            storage.addLog(new logs.Log('Job failed.', {'jobName': jobData.name}));
-        });
-    ;
 }
 
 function testJob(jobData, resultContainer) {
     resultContainer.textContent = 'Testing ...';
     resultContainer.classList.remove('theme-error');
 
-    let job = null;
-    try {
-        job = compileJob(jobData);
-    } catch (error) {
-        resultContainer.classList.add('theme-error');
-        resultContainer.textContent = error.message;
-        return;
-    }
-
-    window.FileSync.testJob(job)
+    window.FileSync.testJob(jobData)
         .then(function(result) {
             if (result == null) {
                 resultContainer.textContent = 'Job test passed!';
