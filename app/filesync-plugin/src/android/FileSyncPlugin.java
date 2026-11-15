@@ -2,7 +2,10 @@ package dev.eriq.filesync.plugin;
 
 import dev.eriq.filesync.Version;
 import dev.eriq.filesync.SyncJob;
+import dev.eriq.filesync.errors.FileSyncError;
+import dev.eriq.filesync.location.LocalLocation;
 import dev.eriq.filesync.location.Location;
+import dev.eriq.filesync.location.SSHLocation;
 import dev.eriq.filesync.plugin.Database;
 import dev.eriq.filesync.util.JSON;
 
@@ -18,6 +21,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.List;
+import java.util.Map;
 
 public class FileSyncPlugin extends CordovaPlugin {
     private static final String ACTION_SYNC = "sync";
@@ -33,6 +37,11 @@ public class FileSyncPlugin extends CordovaPlugin {
     private static final String ACTION_DB_LOCATIONS_UPSERT = "db-locations-upsert";
     private static final String ACTION_DB_LOGS_GET = "db-logs-get";
     private static final String ACTION_DB_LOGS_APPEND = "db-logs-append";
+
+    private static final List<String> ALLOWED_LOCATION_CLASSES = List.of(
+        LocalLocation.class.getName(),
+        SSHLocation.class.getName()
+    );
 
     private Database db;
 
@@ -143,6 +152,15 @@ public class FileSyncPlugin extends CordovaPlugin {
     }
 
     private void upsertLocation(JSONObject locationData, CallbackContext callbackContext) {
+        String className = locationData.optString("__class__", null);
+        if (className == null) {
+            throw new FileSyncError(String.format("No class/type specified for location '%s'.", locationData.optString("name", "<unknown>")));
+        }
+
+        if (!ALLOWED_LOCATION_CLASSES.contains(className)) {
+            throw new FileSyncError(String.format("Unknwon location class/type '%s' specified for location '%s'.", className, locationData.optString("name", "<unknown>")));
+        }
+
         Location location = null;
         try {
             location = (Location)(JSON.fromJSON(locationData.toString()));
@@ -164,8 +182,15 @@ public class FileSyncPlugin extends CordovaPlugin {
         callbackContext.success(JSON.toJSON(records));
     }
 
-    private void appendLog(String mssage, JSONObject data, CallbackContext callbackContext) {
-        callbackContext.success(db.appendLog(message, data));
+    private void appendLog(String message, JSONObject rawData, CallbackContext callbackContext) {
+        Map<String, Object> data = null;
+        if (rawData != null) {
+            // Note the workaround of toMap() because of differing org.json versions.
+            data = JSON.parseObject(rawData.toString());
+        }
+
+        db.appendLog(message, data);
+        callbackContext.success(true);
     }
 
     // TEST - Job data now has name of location, not JSON location (will need to specify __class__).

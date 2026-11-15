@@ -1,15 +1,26 @@
 package dev.eriq.filesync.plugin;
 
+import dev.eriq.filesync.Sync;
 import dev.eriq.filesync.SyncJob;
+import dev.eriq.filesync.errors.BadInputError;
+import dev.eriq.filesync.errors.FileSyncError;
+import dev.eriq.filesync.location.LocalLocation;
 import dev.eriq.filesync.location.Location;
+import dev.eriq.filesync.location.SSHLocation;
 import dev.eriq.filesync.util.JSON;
 
 import android.content.Context;
+import android.content.ContentValues;
+import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class Database extends SQLiteOpenHelper {
     public static final int DATABASE_VERSION = 1;
@@ -36,35 +47,132 @@ public class Database extends SQLiteOpenHelper {
     }
 
     public List<SyncJob> getJobs() {
-        SQLiteDatabase db = getReadableDatabase();
+        Map<String, Location> locations = getLocationsMap();
 
-        // TEST
-        return null;
+        SQLiteDatabase db = getReadableDatabase();
+        Cursor cursor = db.query("Jobs", null, null, null, null, null, null, null);
+
+        List<SyncJob> jobs = new ArrayList<SyncJob>();
+        while (cursor.moveToNext()) {
+            String name = cursor.getString(cursor.getColumnIndexOrThrow("name"));
+            String schedule = cursor.getString(cursor.getColumnIndexOrThrow("schedule"));
+            String sourceName = cursor.getString(cursor.getColumnIndexOrThrow("sourceName"));
+            String destName = cursor.getString(cursor.getColumnIndexOrThrow("destName"));
+            Sync.ConflictBehavior conflictBehavior = Sync.ConflictBehavior.valueOf(cursor.getString(cursor.getColumnIndexOrThrow("conflictBehavior")));
+            String rawIdentityChecks = cursor.getString(cursor.getColumnIndexOrThrow("identityChecks"));
+
+            EnumSet<Sync.IdentityCheck> identityChecks = EnumSet.noneOf(Sync.IdentityCheck.class);
+            for (String rawCheck : rawIdentityChecks.split(",")) {
+                identityChecks.add(Sync.IdentityCheck.valueOf(rawCheck.strip()));
+            }
+
+            Location source = locations.get(sourceName);
+            if (source == null) {
+                throw new FileSyncError(String.format("Could not find matching source location for name: '%s'.", sourceName));
+            }
+
+            Location dest = locations.get(destName);
+            if (dest == null) {
+                throw new FileSyncError(String.format("Could not find matching dest location for name: '%s'.", destName));
+            }
+
+            Sync sync = new Sync(source, dest, identityChecks, conflictBehavior);
+            jobs.add(new SyncJob(name, schedule, sync));
+        }
+        cursor.close();
+
+        return jobs;
     }
 
     public void upsertJob(SyncJob job) {
-        SQLiteDatabase db = getWritableDatabase();
+        Map<String, Object> data = job.toMap();
 
-        // TEST
+        ContentValues values = new ContentValues();
+        values.put("name", (String)(data.get("name")));
+        values.put("schedule", (String)(data.get("schedule")));
+        values.put("sourceName", (String)(((Map<String, Object>)(data.get("source"))).get("name")));
+        values.put("destName", (String)(((Map<String, Object>)(data.get("dest"))).get("name")));
+        values.put("identityChecks", (String)(data.get("identityChecks")));
+        values.put("conflictBehavior", (String)(data.get("conflictBehavior")));
+
+        SQLiteDatabase db = getWritableDatabase();
+        db.insertWithOnConflict("Jobs", null, values, SQLiteDatabase.CONFLICT_REPLACE);
     }
 
     public boolean removeJob(String name) {
-        // TEST
-        return false;
+        SQLiteDatabase db = getWritableDatabase();
+        int count = db.delete("Jobs", "name = ?", new String[]{name});
+        return (count > 0);
     }
 
     public List<Location> getLocations() {
-        // TEST
-        return null;
+        SQLiteDatabase db = getReadableDatabase();
+        Cursor cursor = db.query("Locations", null, null, null, null, null, null, null);
+
+        List<Location> locations = new ArrayList<Location>();
+        while (cursor.moveToNext()) {
+            String className = cursor.getString(cursor.getColumnIndexOrThrow("class"));
+            String name = cursor.getString(cursor.getColumnIndexOrThrow("name"));
+
+            Map<String, Object> data = new HashMap<String, Object>();
+            data.put("name", cursor.getString(cursor.getColumnIndexOrThrow("name")));
+            data.put("base-dir", cursor.getString(cursor.getColumnIndexOrThrow("baseDir")));
+            data.put("hostname", cursor.getString(cursor.getColumnIndexOrThrow("hostname")));
+            data.put("port", cursor.getInt(cursor.getColumnIndexOrThrow("port")));
+            data.put("username", cursor.getString(cursor.getColumnIndexOrThrow("username")));
+            data.put("password", cursor.getString(cursor.getColumnIndexOrThrow("password")));
+            data.put("public-key", cursor.getString(cursor.getColumnIndexOrThrow("publicKey")));
+            data.put("private-key", cursor.getString(cursor.getColumnIndexOrThrow("privateKey")));
+
+            Location location = null;
+            if (className.equals(LocalLocation.class.getName())) {
+                location = (LocalLocation)LocalLocation.fromMap(data);
+            } else if (className.equals(SSHLocation.class.getName())) {
+                location = (SSHLocation)SSHLocation.fromMap(data);
+            } else {
+                throw new BadInputError(String.format("Unknwon location class '%s' specified for location '%s'.", className, name));
+            }
+
+            locations.add(location);
+        }
+        cursor.close();
+
+        return locations;
+    }
+
+    /**
+     * Get locations keyed by name.
+     */
+    public Map<String, Location> getLocationsMap() {
+        Map<String, Location> locations = new HashMap<String, Location>();
+        for (Location location : getLocations()) {
+            locations.put(location.getName(), location);
+        }
+
+        return locations;
     }
 
     public void upsertLocation(Location location) {
-        // TEST
+        Map<String, Object> data = location.toMap();
+
+        ContentValues values = new ContentValues();
+        values.put("name", (String)(data.get("name")));
+        values.put("class", (String)(data.get("__class__")));
+        values.put("baseDir", (String)(data.get("base-dir")));
+        values.put("hostname", (String)(data.getOrDefault("hostname", null)));
+        values.put("port", "" + data.getOrDefault("port", null));
+        values.put("password", (String)(data.getOrDefault("password", null)));
+        values.put("public-key", (String)(data.getOrDefault("public-key", null)));
+        values.put("private-key", (String)(data.getOrDefault("private-key", null)));
+
+        SQLiteDatabase db = getWritableDatabase();
+        db.insertWithOnConflict("Locations", null, values, SQLiteDatabase.CONFLICT_REPLACE);
     }
 
     public boolean removeLocation(String name) {
-        // TEST
-        return false;
+        SQLiteDatabase db = getWritableDatabase();
+        int count = db.delete("Locations", "name = ?", new String[]{name});
+        return (count > 0);
     }
 
     /**
@@ -72,36 +180,118 @@ public class Database extends SQLiteOpenHelper {
      * A limit <= 0 will fetch all records.
      */
     public List<LogRecord> getLogs(int limit) {
-        // TEST
-        return null;
+        String stringLimit = null;
+        if (limit > 0) {
+            stringLimit = "" + limit;
+        }
+
+        SQLiteDatabase db = getReadableDatabase();
+        Cursor cursor = db.query("Logs", null, null, null, null, null, null, stringLimit);
+
+        List<LogRecord> logs = new ArrayList<LogRecord>();
+        while (cursor.moveToNext()) {
+            long timestamp = cursor.getLong(cursor.getColumnIndexOrThrow("timestamp"));
+            String message = cursor.getString(cursor.getColumnIndexOrThrow("message"));
+            Map<String, Object> data = JSON.parseObject(cursor.getString(cursor.getColumnIndexOrThrow("data")));
+
+            logs.add(new LogRecord(timestamp, message, data));
+        }
+        cursor.close();
+
+        return logs;
     }
 
-    public void appendLog(String message, JSONObject data) {
-        // TEST
+    public void appendLog(String message, Map<String, Object> data) {
+        if (data == null) {
+            data = new HashMap<String, Object>();
+        }
 
-        // TEST - Check for null, JSON null, and empty on data.
+        ContentValues values = new ContentValues();
+        values.put("timestamp", System.currentTimeMillis());
+        values.put("message", message);
+        values.put("data", JSON.toJSON(data));
+
+        SQLiteDatabase db = getWritableDatabase();
+        db.insert("Logs", null, values);
     }
 
     private void createAll(SQLiteDatabase db) {
+        db.execSQL(SQL_CREATE_LOGS);
         db.execSQL(SQL_CREATE_LOCATIONS);
+        db.execSQL(SQL_CREATE_JOBS);
     }
 
     private void dropAll(SQLiteDatabase db) {
+        db.execSQL(SQL_DROP_JOBS);
         db.execSQL(SQL_DROP_LOCATIONS);
+        db.execSQL(SQL_DROP_LOGS);
     }
+
+    private static final String SQL_CREATE_JOBS = String.join("\n",
+        "CREATE TABLE Jobs (",
+        "    name TEXT PRIMARY KEY,",
+        "    schedule TEXT NOT NULL,",
+        "    sourceName TEXT REFERENCES Locations(name) NOT NULL,",
+        "    destName TEXT REFERENCES Locations(name) NOT NULL,",
+        "    identityChecks TEXT NOT NULL,",
+        "    conflictBehavior TEXT NOT NULL",
+        ");"
+    );
 
     private static final String SQL_CREATE_LOCATIONS = String.join("\n",
         "CREATE TABLE Locations (",
-        "    name TEXT UNIQUE,",
-        "    data TEXT,",
+        "    name TEXT PRIMARY KEY,",
+        "    class TEXT NOT NULL,",
+        "    baseDir TEXT NOT NULL,",
+        "    hostname TEXT,",
+        "    port INTEGER,",
+        "    username TEXT,",
+        "    password TEXT,",
+        "    publicKey TEXT,",
+        "    privateKey TEXT,",
         ");"
+    );
+
+    private static final String SQL_CREATE_LOGS = String.join("\n",
+        "CREATE TABLE Logs (",
+        "    timestamp INTEGER NOT NULL,",
+        "    message TEXT NOT NULL,",
+        "    data TEXT NOT NULL",
+        ");"
+    );
+
+    private static final String SQL_DROP_JOBS = String.join("\n",
+        "DROP TABLE IF EXISTS Jobs;"
     );
 
     private static final String SQL_DROP_LOCATIONS = String.join("\n",
         "DROP TABLE IF EXISTS Locations;"
     );
 
-    // TEST
-    private static class LogRecord {
+    private static final String SQL_DROP_LOGS = String.join("\n",
+        "DROP TABLE IF EXISTS Logs;"
+    );
+
+    public static class LogRecord extends JSON.MapConverter {
+        public long timestamp;
+        public String message;
+        public Map<String, Object> data;
+
+        public LogRecord(long timestamp, String message, Map<String, Object> data) {
+            this.timestamp = timestamp;
+            this.message = message;
+
+            if (data == null) {
+                data = new HashMap<String, Object>();
+            }
+
+            this.data = data;
+        }
+
+        protected void serializeToMap(Map<String, Object> data) {
+            data.put("timestamp", timestamp);
+            data.put("message", message);
+            data.put("data", data);
+        }
     }
 }

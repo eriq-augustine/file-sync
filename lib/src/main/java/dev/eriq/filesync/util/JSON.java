@@ -19,6 +19,10 @@ public class JSON {
 
     public static final String CLASS_NAME_KEY = "__class__";
 
+    public static final boolean DEFAULT_PRETTY = false;
+
+    public static final boolean DEFAULT_SORT = true;
+
     /**
      * A base for classes to serialize to/from JSON.
      *
@@ -51,32 +55,39 @@ public class JSON {
         /**
          * Create an instance of this (sub)class with a map that came from toMap().
          */
-        public static Object fromMap(Map<String, Object> map) {
+        public static Object fromMap(Map<String, Object> data) {
             throw new NotSupportedError("Child class has not implemented JSON (map) deserialization.");
         }
 
         public String toJSON() {
-            return toJSON(false, true);
+            return toJSON(DEFAULT_PRETTY, DEFAULT_SORT);
         }
 
         public String toJSON(boolean pretty, boolean sort) {
-            Map<String, Object> map = toMap();
-            if (sort) {
-                map = new TreeMap(map);
-            }
-
-            JSONObject json = new JSONObject(map);
-
-            if (pretty) {
-                json.toString(INDENT);
-            }
-
-            return json.toString();
+            return JSON.toJSON(toMap());
         }
     }
 
+    public static String toJSON(Map<String, Object> data) {
+        return toJSON(data, DEFAULT_PRETTY, DEFAULT_SORT);
+    }
+
+    public static String toJSON(Map<String, Object> data, boolean pretty, boolean sort) {
+        if (sort) {
+            data = new TreeMap(data);
+        }
+
+        JSONObject json = new JSONObject(data);
+
+        if (pretty) {
+            json.toString(INDENT);
+        }
+
+        return json.toString();
+    }
+
     public static String toJSON(MapConverter object) {
-        return toJSON(object, false, true);
+        return toJSON(object, DEFAULT_PRETTY, DEFAULT_SORT);
     }
 
     public static String toJSON(MapConverter object, boolean pretty, boolean sort) {
@@ -84,7 +95,7 @@ public class JSON {
     }
 
     public static String toJSON(List<? extends MapConverter> objects) {
-        return toJSON(objects, false);
+        return toJSON(objects, DEFAULT_PRETTY);
     }
 
     public static String toJSON(List<? extends MapConverter> objects, boolean pretty) {
@@ -100,16 +111,19 @@ public class JSON {
         return array.toString();
     }
 
-    public static Object fromJSON(String text) {
+    public static Map<String, Object> parseObject(String text) {
         JSONObject json = null;
         try {
             json = new JSONObject(text);
         } catch (JSONException ex) {
-            throw new BadInputError("Failed to parse JSON for MapConverter.", ex);
+            throw new BadInputError("Failed to parse JSON object.", ex);
         }
 
-        Map<String, Object> data = json.toMap();
-        return fromMap(data);
+        return json.toMap();
+    }
+
+    public static Object fromJSON(String text) {
+        return fromMap(parseObject(text));
     }
 
     public static Object fromMap(Map<String, Object> data) {
@@ -143,7 +157,7 @@ public class JSON {
     }
 
     public static String normalize(String text) {
-        return normalize(text, false, true);
+        return normalize(text, DEFAULT_PRETTY, DEFAULT_SORT);
     }
 
     public static String normalize(String text, boolean pretty, boolean sort) {

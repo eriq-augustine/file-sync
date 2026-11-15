@@ -1180,6 +1180,36 @@ table.sortable-table th[data-ascending='false']::after {
     box-shadow: 2px 2px 0px var(--color-active-outline);
 }
 
+:has(> .loading-overlay) {
+    position: relative;
+
+    min-height: 1rem;
+    min-width: 1rem;
+}
+
+.loading-overlay {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1000;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    backdrop-filter: blur(3px) brightness(0.5);
+}
+
+.loading-overlay .icon {
+    height: 75%;
+    width: 75%;
+
+    fill: var(--color-active-accent-bg);
+    stroke: var(--color-active-accent-bg);
+}
+
 /* Generated Rules */
 
 .theme-primary {

@@ -32,12 +32,20 @@ public class SyncJob extends JSON.MapConverter {
         this.sync = sync;
     }
 
+    public SyncJob(String name, String scheduleText, Sync sync) {
+        this(name, parseSchedule(scheduleText), sync);
+    }
+
     public SyncJob(String scheduleText, Sync sync) {
-        this("", parseSchedule(scheduleText), sync);
+        this("", scheduleText, sync);
     }
 
     public String getName() {
         return name;
+    }
+
+    public String getSchedule() {
+        return schedule.asString();
     }
 
     protected void serializeToMap(Map<String, Object> data) {
