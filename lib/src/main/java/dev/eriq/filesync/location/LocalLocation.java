@@ -22,7 +22,7 @@ import java.util.Map;
  */
 public class LocalLocation extends Location {
     public LocalLocation(String name, Path baseDir) {
-        super(name, baseDir.toAbsolutePath().toString());
+        super(name, baseDir.toString());
     }
 
     public LocalLocation(Path baseDir) {
@@ -37,7 +37,7 @@ public class LocalLocation extends Location {
     }
 
     public void open() {
-        Path basePath = Path.of(baseDir);
+        Path basePath = Path.of(baseDir).toAbsolutePath();
 
         if (!DirentUtils.exists(basePath)) {
             try {
@@ -80,7 +80,7 @@ public class LocalLocation extends Location {
     }
 
     public void makeDir(String relpath) {
-        Path path = Paths.get(baseDir, relpath);
+        Path path = Paths.get(baseDir, relpath).toAbsolutePath();
 
         try {
             Files.createDirectory(path);
@@ -90,7 +90,7 @@ public class LocalLocation extends Location {
     }
 
     public void removeDir(String relpath) {
-        Path path = Paths.get(baseDir, relpath);
+        Path path = Paths.get(baseDir, relpath).toAbsolutePath();
 
         try {
             Files.delete(path);
@@ -100,15 +100,15 @@ public class LocalLocation extends Location {
     }
 
     public void fetchFile(String relpath, Path tempPath) {
-        copyFile(Paths.get(baseDir, relpath), tempPath);
+        copyFile(Paths.get(baseDir, relpath).toAbsolutePath(), tempPath);
     }
 
     public void putFile(Path tempPath, String relpath) {
-        copyFile(tempPath, Paths.get(baseDir, relpath));
+        copyFile(tempPath, Paths.get(baseDir, relpath).toAbsolutePath());
     }
 
     public void removeFile(String relpath) {
-        Path path = Paths.get(baseDir, relpath);
+        Path path = Paths.get(baseDir, relpath).toAbsolutePath();
 
         try {
             Files.delete(path);
@@ -118,7 +118,7 @@ public class LocalLocation extends Location {
     }
 
     public String readLink(String relpath) {
-        Path path = Paths.get(baseDir, relpath);
+        Path path = Paths.get(baseDir, relpath).toAbsolutePath();
 
         try {
             return Files.readSymbolicLink(path).toString();
@@ -128,7 +128,7 @@ public class LocalLocation extends Location {
     }
 
     public void createLink(String relpath, String target) {
-        Path path = Paths.get(baseDir, relpath);
+        Path path = Paths.get(baseDir, relpath).toAbsolutePath();
 
         try {
             Files.createSymbolicLink(path, Path.of(target));
@@ -138,7 +138,7 @@ public class LocalLocation extends Location {
     }
 
     public void removeLink(String relpath) {
-        Path path = Paths.get(baseDir, relpath);
+        Path path = Paths.get(baseDir, relpath).toAbsolutePath();
 
         try {
             Files.delete(path);

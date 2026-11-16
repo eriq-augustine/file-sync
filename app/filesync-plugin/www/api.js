@@ -110,12 +110,12 @@ FileSync.prototype.appendLog = function(message, data = undefined) {
 };
 
 function localGetList(key) {
-    let items = window.localStorage.getItem(key);
-    if (items == null) {
-        return Promise.resolve([]);
+    let itemString = window.localStorage.getItem(key);
+    if (itemString == null) {
+        return Promise.resolve(JSON.stringify([]));
     }
 
-    return Promise.resolve(JSON.parse(items));
+    return Promise.resolve(itemString);
 }
 
 function localUpsertFromListByName(key, newItem) {
@@ -129,7 +129,7 @@ function localUpsertFromListByName(key, newItem) {
     let found = false;
     for (let i = 0; i < items.length; i++) {
         if (items[i].name === newItem.name) {
-            items[i] = name;
+            items[i] = newItem;
             found = true;
             break;
         }

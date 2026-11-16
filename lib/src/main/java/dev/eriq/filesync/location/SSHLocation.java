@@ -58,7 +58,7 @@ public class SSHLocation extends Location {
      * Either a password or (private and public keys) are required.
      */
     public SSHLocation(String name, String hostname, int port, String username, String password, String privateKey, String publicKey, String baseDir) {
-        super(baseDir);
+        super(name, baseDir);
 
         username = StringUtils.nullEmptyString(username);
         if (username == null) {
@@ -110,8 +110,8 @@ public class SSHLocation extends Location {
     protected void serializeToMap(Map<String, Object> data) {
         super.serializeToMap(data);
 
-        data.put("port", port);
         data.put("hostname", hostname);
+        data.put("port", port);
         data.put("username", username);
         data.put("password", password);
         data.put("private-key", privateKey);
@@ -120,13 +120,14 @@ public class SSHLocation extends Location {
 
     public static Object fromMap(Map<String, Object> data) {
         String name = data.getOrDefault("name", "").toString();
+        String baseDir = data.get("base-dir").toString();
+
         String hostname = data.get("hostname").toString();
         int port = Integer.parseInt(data.get("port").toString());
         String username = data.get("username").toString();
         String password = StringUtils.nullOrToString(data.get("password"));
         String privateKey = StringUtils.nullOrToString(data.get("private-key"));
         String publicKey = StringUtils.nullOrToString(data.get("public-key"));
-        String baseDir = data.get("base-dir").toString();
 
         return new SSHLocation(name, hostname, port, username, password, privateKey, publicKey, baseDir);
     }

@@ -2,10 +2,9 @@ package dev.eriq.filesync.plugin;
 
 import dev.eriq.filesync.Sync;
 import dev.eriq.filesync.SyncJob;
-import dev.eriq.filesync.errors.BadInputError;
 import dev.eriq.filesync.errors.FileSyncError;
-import dev.eriq.filesync.location.LocalLocation;
 import dev.eriq.filesync.location.Location;
+import dev.eriq.filesync.location.LocationUtils;
 import dev.eriq.filesync.location.SSHLocation;
 import dev.eriq.filesync.util.JSON;
 
@@ -14,7 +13,6 @@ import android.content.ContentValues;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
-import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -46,6 +44,12 @@ public class Database extends SQLiteOpenHelper {
         onUpgrade(db, oldVersion, newVersion);
     }
 
+    public void reset() {
+        SQLiteDatabase db = getWritableDatabase();
+        dropAll(db);
+        onCreate(db);
+    }
+
     public List<SyncJob> getJobs() {
         Map<String, Location> locations = getLocationsMap();
 
@@ -59,11 +63,13 @@ public class Database extends SQLiteOpenHelper {
             String sourceName = cursor.getString(cursor.getColumnIndexOrThrow("sourceName"));
             String destName = cursor.getString(cursor.getColumnIndexOrThrow("destName"));
             Sync.ConflictBehavior conflictBehavior = Sync.ConflictBehavior.valueOf(cursor.getString(cursor.getColumnIndexOrThrow("conflictBehavior")));
-            String rawIdentityChecks = cursor.getString(cursor.getColumnIndexOrThrow("identityChecks"));
 
+            String rawIdentityChecks = cursor.getString(cursor.getColumnIndexOrThrow("identityChecks")).strip();
             EnumSet<Sync.IdentityCheck> identityChecks = EnumSet.noneOf(Sync.IdentityCheck.class);
-            for (String rawCheck : rawIdentityChecks.split(",")) {
-                identityChecks.add(Sync.IdentityCheck.valueOf(rawCheck.strip()));
+            if (rawIdentityChecks.length() > 0) {
+                for (String rawCheck : rawIdentityChecks.split(",")) {
+                    identityChecks.add(Sync.IdentityCheck.valueOf(rawCheck.strip()));
+                }
             }
 
             Location source = locations.get(sourceName);
@@ -85,15 +91,16 @@ public class Database extends SQLiteOpenHelper {
     }
 
     public void upsertJob(SyncJob job) {
-        Map<String, Object> data = job.toMap();
+        Map<String, Object> jobData = job.toMap();
+        Map<String, Object> syncData = (Map<String, Object>)(jobData.get("sync"));
 
         ContentValues values = new ContentValues();
-        values.put("name", (String)(data.get("name")));
-        values.put("schedule", (String)(data.get("schedule")));
-        values.put("sourceName", (String)(((Map<String, Object>)(data.get("source"))).get("name")));
-        values.put("destName", (String)(((Map<String, Object>)(data.get("dest"))).get("name")));
-        values.put("identityChecks", (String)(data.get("identityChecks")));
-        values.put("conflictBehavior", (String)(data.get("conflictBehavior")));
+        values.put("name", (String)(jobData.get("name")));
+        values.put("schedule", (String)(jobData.get("schedule")));
+        values.put("sourceName", (String)(((Map<String, Object>)(syncData.get("source"))).get("name")));
+        values.put("destName", (String)(((Map<String, Object>)(syncData.get("dest"))).get("name")));
+        values.put("identityChecks", String.join(",", (List<String>)(syncData.get("identity-checks"))));
+        values.put("conflictBehavior", (String)(syncData.get("conflict-behavior")));
 
         SQLiteDatabase db = getWritableDatabase();
         db.insertWithOnConflict("Jobs", null, values, SQLiteDatabase.CONFLICT_REPLACE);
@@ -124,15 +131,7 @@ public class Database extends SQLiteOpenHelper {
             data.put("public-key", cursor.getString(cursor.getColumnIndexOrThrow("publicKey")));
             data.put("private-key", cursor.getString(cursor.getColumnIndexOrThrow("privateKey")));
 
-            Location location = null;
-            if (className.equals(LocalLocation.class.getName())) {
-                location = (LocalLocation)LocalLocation.fromMap(data);
-            } else if (className.equals(SSHLocation.class.getName())) {
-                location = (SSHLocation)SSHLocation.fromMap(data);
-            } else {
-                throw new BadInputError(String.format("Unknwon location class '%s' specified for location '%s'.", className, name));
-            }
-
+            Location location = LocationUtils.createLocation(className, data);
             locations.add(location);
         }
         cursor.close();
@@ -161,9 +160,10 @@ public class Database extends SQLiteOpenHelper {
         values.put("baseDir", (String)(data.get("base-dir")));
         values.put("hostname", (String)(data.getOrDefault("hostname", null)));
         values.put("port", "" + data.getOrDefault("port", null));
+        values.put("username", (String)(data.getOrDefault("username", null)));
         values.put("password", (String)(data.getOrDefault("password", null)));
-        values.put("public-key", (String)(data.getOrDefault("public-key", null)));
-        values.put("private-key", (String)(data.getOrDefault("private-key", null)));
+        values.put("publicKey", (String)(data.getOrDefault("public-key", null)));
+        values.put("privateKey", (String)(data.getOrDefault("private-key", null)));
 
         SQLiteDatabase db = getWritableDatabase();
         db.insertWithOnConflict("Locations", null, values, SQLiteDatabase.CONFLICT_REPLACE);
@@ -248,7 +248,7 @@ public class Database extends SQLiteOpenHelper {
         "    username TEXT,",
         "    password TEXT,",
         "    publicKey TEXT,",
-        "    privateKey TEXT,",
+        "    privateKey TEXT",
         ");"
     );
 

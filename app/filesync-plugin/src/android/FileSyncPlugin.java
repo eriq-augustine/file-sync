@@ -1,11 +1,11 @@
 package dev.eriq.filesync.plugin;
 
 import dev.eriq.filesync.Version;
+import dev.eriq.filesync.Sync;
 import dev.eriq.filesync.SyncJob;
-import dev.eriq.filesync.errors.FileSyncError;
-import dev.eriq.filesync.location.LocalLocation;
+import dev.eriq.filesync.errors.BadInputError;
 import dev.eriq.filesync.location.Location;
-import dev.eriq.filesync.location.SSHLocation;
+import dev.eriq.filesync.location.LocationUtils;
 import dev.eriq.filesync.plugin.Database;
 import dev.eriq.filesync.util.JSON;
 
@@ -20,6 +20,8 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -38,11 +40,6 @@ public class FileSyncPlugin extends CordovaPlugin {
     private static final String ACTION_DB_LOGS_GET = "db-logs-get";
     private static final String ACTION_DB_LOGS_APPEND = "db-logs-append";
 
-    private static final List<String> ALLOWED_LOCATION_CLASSES = List.of(
-        LocalLocation.class.getName(),
-        SSHLocation.class.getName()
-    );
-
     private Database db;
 
     public FileSyncPlugin() {
@@ -60,7 +57,10 @@ public class FileSyncPlugin extends CordovaPlugin {
 
     @Override
     public void onDestroy() {
-        db.close();
+        if (db != null) {
+            db.close();
+            db = null;
+        }
 
         super.onDestroy();
     }
@@ -72,6 +72,7 @@ public class FileSyncPlugin extends CordovaPlugin {
                 try {
                     dispatchAction(action, args, callbackContext);
                 } catch (Exception ex) {
+                    ex.printStackTrace(System.err);
                     callbackContext.error(String.format("Failed to run action '%s': '%s'.", action, ex));
                 }
             }
@@ -89,7 +90,7 @@ public class FileSyncPlugin extends CordovaPlugin {
                 removeJob(args.getString(0), callbackContext);
                 return;
             case ACTION_DB_JOBS_UPSERT:
-                upsertJob(args.getJSONObject(0), callbackContext);
+                upsertJob(objectToMap(args.getJSONObject(0)), callbackContext);
                 return;
             case ACTION_DB_LOCATIONS_GET:
                 getLocations(callbackContext);
@@ -98,22 +99,22 @@ public class FileSyncPlugin extends CordovaPlugin {
                 removeLocation(args.getString(0), callbackContext);
                 return;
             case ACTION_DB_LOCATIONS_UPSERT:
-                upsertLocation(args.getJSONObject(0), callbackContext);
+                upsertLocation(objectToMap(args.getJSONObject(0)), callbackContext);
                 return;
             case ACTION_DB_LOGS_GET:
                 getLogs(args.getInt(0), callbackContext);
                 return;
             case ACTION_DB_LOGS_APPEND:
-                appendLog(args.getString(0), args.getJSONObject(1), callbackContext);
+                appendLog(args.getString(0), objectToMap(args.getJSONObject(1)), callbackContext);
                 return;
             case ACTION_SYNC:
-                sync(args.getJSONObject(0), callbackContext);
+                sync(objectToMap(args.getJSONObject(0)), callbackContext);
                 return;
             case ACTION_TEST_JOB:
-                testJob(args.getJSONObject(0), callbackContext);
+                testJob(objectToMap(args.getJSONObject(0)), callbackContext);
                 return;
             case ACTION_TEST_LOCATION:
-                testLocation(args.getJSONObject(0), callbackContext);
+                testLocation(objectToMap(args.getJSONObject(0)), callbackContext);
                 return;
             case ACTION_VERSION:
                 callbackContext.success(Version.get());
@@ -126,19 +127,28 @@ public class FileSyncPlugin extends CordovaPlugin {
 
     private void getJobs(CallbackContext callbackContext) {
         List<SyncJob> jobs = db.getJobs();
-        callbackContext.success(JSON.toJSON(jobs));
-    }
 
-    private void upsertJob(JSONObject jobData, CallbackContext callbackContext) {
-        SyncJob job = null;
-        try {
-            job = (SyncJob)(JSON.fromJSON(jobData.toString()));
-        } catch (Exception ex) {
-            callbackContext.error(String.format("Failed to deserialize job: '%s'.", ex));
-            return;
+        List<Map<String, Object>> result = new ArrayList<Map<String, Object>>();
+        for (SyncJob job : jobs) {
+            Map<String, Object> jobData = job.getSync().toMap();
+            jobData.remove("__class__");
+
+            jobData.put("name", job.getName());
+            jobData.put("schedule", job.getSchedule());
+
+            jobData.put("sourceName", job.getSync().getSource().getName());
+            jobData.put("destName", job.getSync().getDest().getName());
+            jobData.remove("source");
+            jobData.remove("dest");
+
+            result.add(jobData);
         }
 
-        db.upsertJob(job);
+        callbackContext.success(JSON.toJSONFromListMap(result));
+    }
+
+    private void upsertJob(Map<String, Object> jobData, CallbackContext callbackContext) {
+        db.upsertJob(buildJob(jobData));
         callbackContext.success(true);
     }
 
@@ -151,25 +161,8 @@ public class FileSyncPlugin extends CordovaPlugin {
         callbackContext.success(JSON.toJSON(locations));
     }
 
-    private void upsertLocation(JSONObject locationData, CallbackContext callbackContext) {
-        String className = locationData.optString("__class__", null);
-        if (className == null) {
-            throw new FileSyncError(String.format("No class/type specified for location '%s'.", locationData.optString("name", "<unknown>")));
-        }
-
-        if (!ALLOWED_LOCATION_CLASSES.contains(className)) {
-            throw new FileSyncError(String.format("Unknwon location class/type '%s' specified for location '%s'.", className, locationData.optString("name", "<unknown>")));
-        }
-
-        Location location = null;
-        try {
-            location = (Location)(JSON.fromJSON(locationData.toString()));
-        } catch (Exception ex) {
-            callbackContext.error(String.format("Failed to deserialize location: '%s'.", ex));
-            return;
-        }
-
-        db.upsertLocation(location);
+    private void upsertLocation(Map<String, Object> locationData, CallbackContext callbackContext) {
+        db.upsertLocation(buildLocation(locationData));
         callbackContext.success(true);
     }
 
@@ -182,44 +175,26 @@ public class FileSyncPlugin extends CordovaPlugin {
         callbackContext.success(JSON.toJSON(records));
     }
 
-    private void appendLog(String message, JSONObject rawData, CallbackContext callbackContext) {
-        Map<String, Object> data = null;
-        if (rawData != null) {
-            // Note the workaround of toMap() because of differing org.json versions.
-            data = JSON.parseObject(rawData.toString());
-        }
-
+    private void appendLog(String message, Map<String, Object> data, CallbackContext callbackContext) {
         db.appendLog(message, data);
         callbackContext.success(true);
     }
 
-    // TEST - Job data now has name of location, not JSON location (will need to specify __class__).
-    private void sync(JSONObject data, CallbackContext callbackContext) {
-        SyncJob job = null;
-        try {
-            job = (SyncJob)(JSON.fromJSON(data.toString()));
-        } catch (Exception ex) {
-            callbackContext.error(String.format("Failed to deserialize job: '%s'.", ex));
-            return;
-        }
+    private void sync(Map<String, Object> jobData, CallbackContext callbackContext) {
+        SyncJob job = buildJob(jobData);
 
         try {
             job.runNow();
-            callbackContext.success(true);
         } catch (Exception ex) {
             callbackContext.error(String.format("Failed to run job: '%s'.", ex));
-        }
-    }
-
-    // TEST - Job data now has name of location, not JSON location (will need to specify __class__).
-    private void testJob(JSONObject data, CallbackContext callbackContext) {
-        SyncJob job = null;
-        try {
-            job = (SyncJob)(JSON.fromJSON(data.toString()));
-        } catch (Exception ex) {
-            callbackContext.error(String.format("Failed to deserialize job: '%s'.", ex));
             return;
         }
+
+        callbackContext.success(true);
+    }
+
+    private void testJob(Map<String, Object> jobData, CallbackContext callbackContext) {
+        SyncJob job = buildJob(jobData);
 
         try {
             callbackContext.success(job.test());
@@ -228,20 +203,67 @@ public class FileSyncPlugin extends CordovaPlugin {
         }
     }
 
-    private void testLocation(JSONObject data, CallbackContext callbackContext) {
-        Location location = null;
-        try {
-            location = (Location)(JSON.fromJSON(data.toString()));
-        } catch (Exception ex) {
-            callbackContext.error(String.format("Failed to deserialize location: '%s'.", ex));
-            return;
-        }
+    private void testLocation(Map<String, Object> locationData, CallbackContext callbackContext) {
+        Location location = buildLocation(locationData);
 
         try {
             callbackContext.success(location.test());
         } catch (Exception ex) {
             callbackContext.error(String.format("Failed to test location: '%s'.", ex));
         }
+    }
+
+    private SyncJob buildJob(Map<String, Object> jobData) {
+        Map<String, Location> locations = db.getLocationsMap();
+
+        String sourceName = jobData.getOrDefault("sourceName", "").toString();
+        Location source = locations.get(sourceName);
+        if (source == null) {
+            throw new BadInputError(String.format("Could not find source: '%s'.", sourceName));
+        }
+
+        String destName = jobData.getOrDefault("destName", "").toString();
+        Location dest = locations.get(destName);
+        if (dest == null) {
+            throw new BadInputError(String.format("Could not find dest: '%s'.", destName));
+        }
+
+        Map<String, Object> syncData = new HashMap<String, Object>();
+        syncData.put("__class__", Sync.class.getName());
+        syncData.put("source", source.toMap());
+        syncData.put("dest", dest.toMap());
+        syncData.put("identity-checks", jobData.get("identity-checks"));
+        syncData.put("conflict-behavior", jobData.get("conflict-behavior"));
+
+        jobData.put("__class__", SyncJob.class.getName());
+        jobData.put("sync", syncData);
+
+        try {
+            return (SyncJob)(JSON.fromMap(jobData));
+        } catch (Exception ex) {
+            throw new BadInputError(String.format("Failed to deserialize job: '%s'.", ex), ex);
+        }
+    }
+
+    private Location buildLocation(Map<String, Object> locationData) {
+        String className = locationData.getOrDefault("__class__", "").toString();
+        if (className == null) {
+            throw new BadInputError(String.format("No class/type specified for location '%s'.", locationData.getOrDefault("name", "<unknown>")));
+        }
+
+        return LocationUtils.createLocation(className, locationData);
+    }
+
+    /**
+     * Convert a JSON object to a map (while being careful to avoid issues with mismatched org.json versions).
+     * Will return an empty map if null is passed in.
+     */
+    private Map<String, Object> objectToMap(JSONObject data) {
+        if (data == null) {
+            return new HashMap<String, Object>();
+        }
+
+        return JSON.parseObject(data.toString());
     }
 
     /* TEST

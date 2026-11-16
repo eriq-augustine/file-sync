@@ -22,6 +22,6 @@
         <source-file src="src/android/Database.java" target-dir="src/dev/eriq/filesync/plugin"/>
         <lib-file src="src/android/vendor/filesync-uber.jar"/>
 
-        <framework src="androidx.work:work-runtime:2.5.0" />
+        <framework src="androidx.work:work-runtime:2.7.1" />
     </platform>
 </plugin>

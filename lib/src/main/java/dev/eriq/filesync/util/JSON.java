@@ -9,6 +9,7 @@ import org.json.JSONException;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -99,9 +100,22 @@ public class JSON {
     }
 
     public static String toJSON(List<? extends MapConverter> objects, boolean pretty) {
-        JSONArray array = new JSONArray(objects.size());
+        List<Map<String, Object>> newObjects = new ArrayList<Map<String, Object>>(objects.size());
         for (MapConverter object : objects) {
-            array.put(object.toMap());
+            newObjects.add(object.toMap());
+        }
+
+        return toJSONFromListMap(newObjects, pretty);
+    }
+
+    public static String toJSONFromListMap(List<Map<String, Object>> objects) {
+        return toJSONFromListMap(objects, DEFAULT_PRETTY);
+    }
+
+    public static String toJSONFromListMap(List<Map<String, Object>> objects, boolean pretty) {
+        JSONArray array = new JSONArray(objects.size());
+        for (Map<String, Object> object : objects) {
+            array.put(object);
         }
 
         if (pretty) {
@@ -127,6 +141,10 @@ public class JSON {
     }
 
     public static Object fromMap(Map<String, Object> data) {
+        if (data == null) {
+            return null;
+        }
+
         if (!data.containsKey(CLASS_NAME_KEY)) {
             throw new BadInputError(String.format("JSON object cannot be deserialized. It does not contain a class key: '%s'.", CLASS_NAME_KEY));
         }

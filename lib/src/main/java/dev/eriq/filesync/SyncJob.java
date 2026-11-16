@@ -40,6 +40,10 @@ public class SyncJob extends JSON.MapConverter {
         this("", scheduleText, sync);
     }
 
+    public Sync getSync() {
+        return sync;
+    }
+
     public String getName() {
         return name;
     }

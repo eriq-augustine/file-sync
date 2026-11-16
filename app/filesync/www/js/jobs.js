@@ -118,8 +118,12 @@ function renderEditJob(defaultValues = undefined, addButtonLabel = 'Add Job') {
 }
 
 function _renderEditJobWithLocations(defaultValues, addButtonLabel, jobInputContainer, locations) {
+    let sortedLocations = locations.toSorted(function(a, b) {
+        return a.name.localeCompare(b.name);
+    });
+
     let locationChoices = {};
-    for (const location of locations) {
+    for (const location of sortedLocations) {
         locationChoices[location.name] = location.name;
     }
 
@@ -163,7 +167,7 @@ function _renderEditJobWithLocations(defaultValues, addButtonLabel, jobInputCont
                 'File Size': 'SIZE',
                 'Modification Time': 'MODTIME',
             },
-            defaultValues: Object.values(defaultValues['identity-checks'] ?? {}),
+            defaultValues: defaultValues['identity-checks'] ?? [],
         }),
         new edq.model.field.TextField({
             name: 'schedule',
@@ -176,6 +180,12 @@ function _renderEditJobWithLocations(defaultValues, addButtonLabel, jobInputCont
 
     let fieldSet = new edq.model.field.FieldSet(fields, {includeSubmitButton: false});
 
+    function getJobData() {
+        let values = fieldSet.getValues();
+        values['identity-checks'] = Object.values(values['identity-checks']);
+        return values;
+    }
+
     function checkValid() {
         return (fieldSet.validateInputs(true).length === 0);
     }
@@ -186,7 +196,7 @@ function _renderEditJobWithLocations(defaultValues, addButtonLabel, jobInputCont
     let addButton = document.createElement('button');
     addButton.textContent = addButtonLabel;
     addButton.addEventListener('click', function(event) {
-        edq.render.loading.withPromise(storage.upsertJob(fieldSet.getValues())).then(function() {
+        edq.render.loading.withPromise(storage.upsertJob(getJobData())).then(function() {
             edq.core.routing.reload();
         });
     });
@@ -194,7 +204,7 @@ function _renderEditJobWithLocations(defaultValues, addButtonLabel, jobInputCont
     let testButton = document.createElement('button');
     testButton.textContent = 'Test Job';
     testButton.addEventListener('click', function(event) {
-        testJob(fieldSet.getValues(), notificationArea);
+        testJob(getJobData(), notificationArea);
     });
 
     // Only enable the buttons if the fields are valid.

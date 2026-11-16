@@ -36,7 +36,7 @@ public class JSONTest {
 
             new TestCase(
                 new LocalLocation(Path.of("foo")),
-                String.format("{\"__class__\": \"%s\", \"base-dir\": \"%s\", \"name\": \"\"}", LocalLocation.class.getName(), Path.of("foo").toAbsolutePath())
+                String.format("{\"__class__\": \"%s\", \"base-dir\": \"%s\", \"name\": \"\"}", LocalLocation.class.getName(), Path.of("foo"))
             ),
 
             new TestCase(
@@ -73,7 +73,7 @@ public class JSONTest {
                     Sync.class.getName(),
                     EmptyLocation.class.getName(),
                     LocalLocation.class.getName(),
-                    Path.of("foo").toAbsolutePath()
+                    Path.of("foo")
                 )
             ),
 
@@ -96,7 +96,7 @@ public class JSONTest {
                     Sync.class.getName(),
                     EmptyLocation.class.getName(),
                     LocalLocation.class.getName(),
-                    Path.of("foo").toAbsolutePath()
+                    Path.of("foo")
                 )
             ),
 
@@ -119,7 +119,7 @@ public class JSONTest {
                     Sync.class.getName(),
                     EmptyLocation.class.getName(),
                     LocalLocation.class.getName(),
-                    Path.of("foo").toAbsolutePath()
+                    Path.of("foo")
                 )
             ),
 
@@ -148,7 +148,7 @@ public class JSONTest {
                     Sync.class.getName(),
                     EmptyLocation.class.getName(),
                     LocalLocation.class.getName(),
-                    Path.of("foo").toAbsolutePath()
+                    Path.of("foo")
                 )
             )
         );

@@ -32,8 +32,8 @@ function removeLocation(name) {
 function loadLogs(limit = 0) {
     return new Promise(function(resolve, reject) {
         window.FileSync.getLogs(limit)
-            .then(function(items) {
-                resolve(items);
+            .then(function(itemsString) {
+                resolve(JSON.parse(items));
             })
             .catch(function(error) {
                 throw new Error(error);
@@ -45,7 +45,7 @@ function loadLogs(limit = 0) {
 function appendLog(message, data = undefined) {
     return new Promise(function(resolve, reject) {
         window.FileSync.appendLog(message, data)
-            .then(function(items) {
+            .then(function(_) {
                 resolve(true);
             })
             .catch(function(error) {
@@ -62,7 +62,8 @@ function loadWithCache(cacheKey, getFunction) {
 
     return new Promise(function(resolve, reject) {
         getFunction()
-            .then(function(items) {
+            .then(function(itemsString) {
+                let items = JSON.parse(itemsString);
                 cache[cacheKey] = items;
                 resolve(cache[cacheKey]);
             })

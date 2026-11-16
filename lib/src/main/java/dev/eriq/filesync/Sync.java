@@ -90,6 +90,22 @@ public class Sync extends JSON.MapConverter {
         this(source, dest, EnumSet.noneOf(IdentityCheck.class), ConflictBehavior.SKIP);
     }
 
+    public Location getSource() {
+        return source;
+    }
+
+    public Location getDest() {
+        return dest;
+    }
+
+    public EnumSet<IdentityCheck> getIdentityChecks() {
+        return identityChecks;
+    }
+
+    public ConflictBehavior getConflictBehavior() {
+        return conflictBehavior;
+    }
+
     protected void serializeToMap(Map<String, Object> data) {
         data.put("source", source.toMap());
         data.put("dest", dest.toMap());
