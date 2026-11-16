@@ -50,6 +50,12 @@ public class Database extends SQLiteOpenHelper {
         onCreate(db);
     }
 
+    public void clearLogs() {
+        SQLiteDatabase db = getWritableDatabase();
+        db.execSQL(SQL_DROP_LOGS);
+        db.execSQL(SQL_CREATE_LOGS);
+    }
+
     public List<SyncJob> getJobs() {
         Map<String, Location> locations = getLocationsMap();
 
@@ -186,15 +192,16 @@ public class Database extends SQLiteOpenHelper {
         }
 
         SQLiteDatabase db = getReadableDatabase();
-        Cursor cursor = db.query("Logs", null, null, null, null, null, null, stringLimit);
+        Cursor cursor = db.query("Logs", null, null, null, null, null, "timestamp ASC", stringLimit);
 
         List<LogRecord> logs = new ArrayList<LogRecord>();
         while (cursor.moveToNext()) {
             long timestamp = cursor.getLong(cursor.getColumnIndexOrThrow("timestamp"));
             String message = cursor.getString(cursor.getColumnIndexOrThrow("message"));
+            String jobName = cursor.getString(cursor.getColumnIndexOrThrow("jobName"));
             Map<String, Object> data = JSON.parseObject(cursor.getString(cursor.getColumnIndexOrThrow("data")));
 
-            logs.add(new LogRecord(timestamp, message, data));
+            logs.add(new LogRecord(timestamp, message, jobName, data));
         }
         cursor.close();
 
@@ -202,6 +209,10 @@ public class Database extends SQLiteOpenHelper {
     }
 
     public void appendLog(String message, Map<String, Object> data) {
+        appendLog(message, null, data);
+    }
+
+    public void appendLog(String message, String jobName, Map<String, Object> data) {
         if (data == null) {
             data = new HashMap<String, Object>();
         }
@@ -209,10 +220,11 @@ public class Database extends SQLiteOpenHelper {
         ContentValues values = new ContentValues();
         values.put("timestamp", System.currentTimeMillis());
         values.put("message", message);
+        values.put("jobName", jobName);
         values.put("data", JSON.toJSON(data));
 
         SQLiteDatabase db = getWritableDatabase();
-        db.insert("Logs", null, values);
+        db.insertOrThrow("Logs", null, values);
     }
 
     private void createAll(SQLiteDatabase db) {
@@ -256,6 +268,7 @@ public class Database extends SQLiteOpenHelper {
         "CREATE TABLE Logs (",
         "    timestamp INTEGER NOT NULL,",
         "    message TEXT NOT NULL,",
+        "    jobName TEXT,",
         "    data TEXT NOT NULL",
         ");"
     );
@@ -275,11 +288,13 @@ public class Database extends SQLiteOpenHelper {
     public static class LogRecord extends JSON.MapConverter {
         public long timestamp;
         public String message;
+        public String jobName;
         public Map<String, Object> data;
 
-        public LogRecord(long timestamp, String message, Map<String, Object> data) {
+        public LogRecord(long timestamp, String message, String jobName, Map<String, Object> data) {
             this.timestamp = timestamp;
             this.message = message;
+            this.jobName = jobName;
 
             if (data == null) {
                 data = new HashMap<String, Object>();
@@ -291,7 +306,8 @@ public class Database extends SQLiteOpenHelper {
         protected void serializeToMap(Map<String, Object> data) {
             data.put("timestamp", timestamp);
             data.put("message", message);
-            data.put("data", data);
+            data.put("jobName", jobName);
+            data.put("data", this.data);
         }
     }
 }

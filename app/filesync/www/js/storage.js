@@ -33,7 +33,7 @@ function loadLogs(limit = 0) {
     return new Promise(function(resolve, reject) {
         window.FileSync.getLogs(limit)
             .then(function(itemsString) {
-                resolve(JSON.parse(items));
+                resolve(JSON.parse(itemsString));
             })
             .catch(function(error) {
                 throw new Error(error);

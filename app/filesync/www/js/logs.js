@@ -2,18 +2,6 @@ import * as edq from '../vendor/edq/js/edq.min.mjs';
 
 import * as storage from './storage.js';
 
-class Log {
-    timestamp = 0;
-    message = '';
-    data = {};
-
-    constructor(message, data = {}) {
-        this.timestamp = edq.model.timestamp.now();
-        this.message = message;
-        this.data = data;
-    }
-}
-
 function renderPage(request) {
     let header = document.createElement('h2');
     header.textContent = 'Logs';
@@ -24,21 +12,19 @@ function renderPage(request) {
 }
 
 function renderExistingLogs() {
-    let logs = storage.loadLogs();
+    let container = document.createElement('div');
+    container.classList.add('existing-logs', 'section', 'theme-secondary');
 
-    let children = [];
-    for (let i = 0; i < logs.length; i++) {
-        children.push(renderLog(i, logs[i]));
-    }
+    edq.render.loading.withPromise(storage.loadLogs(), container).then(function(logs) {
+        for (let i = (logs.length - 1); i >= 0; i--) {
+            container.appendChild(renderLog(logs[i]));
+        }
+    });
 
-    let element = document.createElement('div');
-    element.classList.add('existing-logs');
-    element.replaceChildren(...children);
-
-    return element;
+    return container;
 }
 
-function renderLog(index, log) {
+function renderLog(log) {
     let container = document.createElement('div');
     container.classList.add('log');
 
@@ -50,8 +36,6 @@ function renderLog(index, log) {
 }
 
 export {
-    Log,
-
     renderPage,
     renderLog,
 }

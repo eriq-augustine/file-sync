@@ -41,12 +41,12 @@ FileSync.prototype.upsertJob = function(newJob) {
     return localUpsertFromListByName(STORAGE_KEY_JOBS, newJob);
 };
 
-FileSync.prototype.removeJob = function(newJob) {
+FileSync.prototype.removeJob = function(name) {
     if (window.cordova.platformId !== BROWSER_PLATFORM) {
-        return createPluginPromise(ACTION_DB_JOBS_REMOVE, [newJob]);
+        return createPluginPromise(ACTION_DB_JOBS_REMOVE, [name]);
     }
 
-    return localRemoveFromListByName(STORAGE_KEY_JOBS, newJob);
+    return localRemoveFromListByName(STORAGE_KEY_JOBS, name);
 };
 
 FileSync.prototype.getLocations = function() {
@@ -65,12 +65,12 @@ FileSync.prototype.upsertLocation = function(newLocation) {
     return localUpsertFromListByName(STORAGE_KEY_LOCATIONS, newLocation);
 };
 
-FileSync.prototype.removeLocation = function(newLocation) {
+FileSync.prototype.removeLocation = function(name) {
     if (window.cordova.platformId !== BROWSER_PLATFORM) {
-        return createPluginPromise(ACTION_DB_LOCATIONS_REMOVE, [newLocation]);
+        return createPluginPromise(ACTION_DB_LOCATIONS_REMOVE, [name]);
     }
 
-    return localRemoveFromListByName(STORAGE_KEY_LOCATIONS, newLocation);
+    return localRemoveFromListByName(STORAGE_KEY_LOCATIONS, name);
 };
 
 FileSync.prototype.getLogs = function(limit = 0) {
@@ -86,9 +86,9 @@ FileSync.prototype.getLogs = function(limit = 0) {
     return logs;
 };
 
-FileSync.prototype.appendLog = function(message, data = undefined) {
+FileSync.prototype.appendLog = function(message, jobName = undefined, data = undefined) {
     if (window.cordova.platformId !== BROWSER_PLATFORM) {
-        return createPluginPromise(ACTION_DB_LOGS_APPEND, [newLocation]);
+        return createPluginPromise(ACTION_DB_LOGS_APPEND, [message, jobName, data]);
     }
 
     let items = window.localStorage.getItem(STORAGE_KEY_LOGS);
@@ -101,6 +101,7 @@ FileSync.prototype.appendLog = function(message, data = undefined) {
     items.push({
         timestamp: (new Date()).valueOf(),
         message: message,
+        jobName: jobName,
         data: data,
     });
 
@@ -171,7 +172,8 @@ function localRemoveFromListByName(key, name) {
 
 FileSync.prototype.sync = function(jobData) {
     if (window.cordova.platformId === BROWSER_PLATFORM) {
-        return createMockPluginPromise(ACTION_SYNC, [jobData]);
+        FileSync.prototype.appendLog("Completed mock job sync.", jobData.name);
+        return Promise.resolve(true);
     }
 
     return createPluginPromise(ACTION_SYNC, [jobData]);
@@ -179,7 +181,8 @@ FileSync.prototype.sync = function(jobData) {
 
 FileSync.prototype.testJob = function(jobData) {
     if (window.cordova.platformId === BROWSER_PLATFORM) {
-        return createMockPluginPromise(ACTION_TEST_JOB, [jobData]);
+        FileSync.prototype.appendLog("Completed mock job test.", jobData.name);
+        return Promise.resolve(null);
     }
 
     return createPluginPromise(ACTION_TEST_JOB, [jobData]);
@@ -187,7 +190,8 @@ FileSync.prototype.testJob = function(jobData) {
 
 FileSync.prototype.testLocation = function(locationData) {
     if (window.cordova.platformId === BROWSER_PLATFORM) {
-        return createMockPluginPromise(ACTION_TEST_LOCATION, [locationData]);
+        FileSync.prototype.appendLog("Completed mock location test.", null, {'location': locationData.name});
+        return Promise.resolve(null);
     }
 
     return createPluginPromise(ACTION_TEST_LOCATION, [locationData]);
@@ -195,7 +199,7 @@ FileSync.prototype.testLocation = function(locationData) {
 
 FileSync.prototype.version = function() {
     if (window.cordova.platformId === BROWSER_PLATFORM) {
-        return createMockPluginPromise(ACTION_VERSION, []);
+        return Promise.resolve("?.?.?");
     }
 
     return createPluginPromise(ACTION_VERSION, []);
@@ -212,13 +216,6 @@ function createPluginPromise(functionName, args) {
         };
 
         exec(successCallback, errorCallback, SERVICE_NAME, functionName, args);
-    });
-}
-
-function createMockPluginPromise(functionName, args) {
-    return Promise.resolve({
-        name: functionName,
-        args: args,
     });
 }
 

@@ -27,8 +27,6 @@ import java.util.Map;
 
 public class FileSyncPlugin extends CordovaPlugin {
     private static final String ACTION_SYNC = "sync";
-    private static final String ACTION_TEST_LOCATION = "test-location";
-    private static final String ACTION_TEST_JOB = "test-job";
     private static final String ACTION_VERSION = "version";
 
     private static final String ACTION_DB_JOBS_GET = "db-jobs-get";
@@ -39,6 +37,9 @@ public class FileSyncPlugin extends CordovaPlugin {
     private static final String ACTION_DB_LOCATIONS_UPSERT = "db-locations-upsert";
     private static final String ACTION_DB_LOGS_GET = "db-logs-get";
     private static final String ACTION_DB_LOGS_APPEND = "db-logs-append";
+
+    private static final String ACTION_TEST_LOCATION = "test-location";
+    private static final String ACTION_TEST_JOB = "test-job";
 
     private Database db;
 
@@ -105,7 +106,7 @@ public class FileSyncPlugin extends CordovaPlugin {
                 getLogs(args.getInt(0), callbackContext);
                 return;
             case ACTION_DB_LOGS_APPEND:
-                appendLog(args.getString(0), objectToMap(args.getJSONObject(1)), callbackContext);
+                appendLog(args.getString(0), args.getString(1), objectToMap(args.getJSONObject(2)), callbackContext);
                 return;
             case ACTION_SYNC:
                 sync(objectToMap(args.getJSONObject(0)), callbackContext);
@@ -175,21 +176,26 @@ public class FileSyncPlugin extends CordovaPlugin {
         callbackContext.success(JSON.toJSON(records));
     }
 
-    private void appendLog(String message, Map<String, Object> data, CallbackContext callbackContext) {
-        db.appendLog(message, data);
+    private void appendLog(String message, String jobName, Map<String, Object> data, CallbackContext callbackContext) {
+        db.appendLog(message, jobName, data);
         callbackContext.success(true);
     }
 
     private void sync(Map<String, Object> jobData, CallbackContext callbackContext) {
         SyncJob job = buildJob(jobData);
 
+        db.appendLog("Manual sync started.", job.getName(), null);
+
         try {
             job.runNow();
         } catch (Exception ex) {
+            db.appendLog("Manual sync failed.", job.getName(), Map.of("error", ex));
+            ex.printStackTrace(System.err);
             callbackContext.error(String.format("Failed to run job: '%s'.", ex));
             return;
         }
 
+        db.appendLog("Manual sync completed successfully.", job.getName(), null);
         callbackContext.success(true);
     }
 
