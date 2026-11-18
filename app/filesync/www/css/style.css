@@ -1,13 +1,15 @@
 .display-header {
     display: flex;
-    flex-direction: row;
-    justify-content: space-between;
+    flex-direction: column;
+    gap: 1rem;
 
     font-size: var(--font-size-normal);
 }
 
-.display-header label {
-    margin: auto 0;
+.display-header > div {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
 }
 
 .edit-job fieldset,
