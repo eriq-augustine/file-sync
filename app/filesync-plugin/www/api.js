@@ -3,6 +3,7 @@ const exec = require('cordova/exec');
 const SERVICE_NAME = 'FileSyncPlugin';
 const BROWSER_PLATFORM = 'browser';
 
+const ACTION_SCHEDULE = 'schedule';
 const ACTION_SYNC = 'sync';
 const ACTION_TEST_JOB = 'test-job';
 const ACTION_TEST_LOCATION = 'test-location';
@@ -169,6 +170,15 @@ function localRemoveFromListByName(key, name) {
 
     return Promise.resolve(removeIndex != null);
 }
+
+FileSync.prototype.schedule = function(jobName) {
+    if (window.cordova.platformId === BROWSER_PLATFORM) {
+        FileSync.prototype.appendLog("Completed mock job schedule.", jobName);
+        return Promise.resolve(true);
+    }
+
+    return createPluginPromise(ACTION_SCHEDULE, [jobName]);
+};
 
 FileSync.prototype.sync = function(jobData) {
     if (window.cordova.platformId === BROWSER_PLATFORM) {

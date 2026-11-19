@@ -108,6 +108,16 @@ public class SyncJob extends JSON.MapConverter {
     }
 
     /**
+     * Get the number of seconds between the next activation time and now.
+     */
+    public long getNextActivationTimeSeconds() {
+        ZonedDateTime nextTime = getNextActivationTime();
+        long nowSecs = System.currentTimeMillis() / 1000;
+
+        return nextTime.toEpochSecond() - nowSecs;
+    }
+
+    /**
      * Get the most recent previous time (before now) that this job should have activated,
      * or null if there are no matching times.
      */

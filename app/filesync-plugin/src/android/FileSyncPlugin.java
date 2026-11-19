@@ -10,8 +10,13 @@ import dev.eriq.filesync.plugin.Database;
 import dev.eriq.filesync.util.JSON;
 
 import android.content.Context;
+import androidx.work.Constraints;
+import androidx.work.Data;
 import androidx.work.ListenableWorker;
+import androidx.work.NetworkType;
+import androidx.work.OneTimeWorkRequest;
 import androidx.work.WorkManager;
+import androidx.work.WorkRequest;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 import org.apache.cordova.CordovaPlugin;
@@ -24,8 +29,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 public class FileSyncPlugin extends CordovaPlugin {
+    private static final String ACTION_SCHEDULE = "schedule";
     private static final String ACTION_SYNC = "sync";
     private static final String ACTION_VERSION = "version";
 
@@ -54,6 +61,13 @@ public class FileSyncPlugin extends CordovaPlugin {
         super.pluginInitialize();
 
         db = new Database(cordova.getContext());
+
+        /* TEST - Schedule periodic maintenance worker.
+        WorkRequest workRequest = new OneTimeWorkRequest.Builder(MaintenanceWorker.class)
+           .addTag("dev.eriq.filesync.maintenance")
+           .build()
+           ;
+        */
     }
 
     @Override
@@ -107,6 +121,9 @@ public class FileSyncPlugin extends CordovaPlugin {
                 return;
             case ACTION_DB_LOGS_APPEND:
                 appendLog(args.getString(0), args.getString(1), objectToMap(args.getJSONObject(2)), callbackContext);
+                return;
+            case ACTION_SCHEDULE:
+                schedule(args.getString(0), callbackContext);
                 return;
             case ACTION_SYNC:
                 sync(objectToMap(args.getJSONObject(0)), callbackContext);
@@ -184,18 +201,17 @@ public class FileSyncPlugin extends CordovaPlugin {
     private void sync(Map<String, Object> jobData, CallbackContext callbackContext) {
         SyncJob job = buildJob(jobData);
 
-        db.appendLog("Manual sync started.", job.getName(), null);
-
         try {
+            db.appendLog("Manual sync started.", job.getName());
             job.runNow();
+            db.appendLog("Manual sync completed successfully.", job.getName());
         } catch (Exception ex) {
-            db.appendLog("Manual sync failed.", job.getName(), Map.of("error", ex));
+            db.appendLog("Manual sync failed.", job.getName(), Map.of("error", ex.toString()));
             ex.printStackTrace(System.err);
             callbackContext.error(String.format("Failed to run job: '%s'.", ex));
             return;
         }
 
-        db.appendLog("Manual sync completed successfully.", job.getName(), null);
         callbackContext.success(true);
     }
 
@@ -272,22 +288,82 @@ public class FileSyncPlugin extends CordovaPlugin {
         return JSON.parseObject(data.toString());
     }
 
-    /* TEST
-    // TEST - Schedule tasks in background?
-    private void schedule() {
-        // TEST
+    private void schedule(String jobName, CallbackContext callbackContext) {
+        SyncJob job = db.getJob(jobName);
+        if (job == null) {
+            callbackContext.error(String.format("Failed to schedule job '%s', could not find job in database.", jobName));
+            return;
+        }
 
-        WorkManager workManager = WorkManager.getInstance(cordova.getContext());
+        schedule(job, db, cordova.getContext());
+
+        callbackContext.success(true);
     }
 
-    private static class SyncWorker extends Worker {
+    private static void schedule(SyncJob job, Database db, Context context) {
+        Data workData = new Data.Builder()
+            .putString("jobName", job.getName())
+            .build()
+            ;
+
+        Constraints constraints = new Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.UNMETERED)
+            .build()
+            ;
+
+        WorkRequest workRequest = new OneTimeWorkRequest.Builder(SyncWorker.class)
+           .setInitialDelay(job.getNextActivationTimeSeconds(), TimeUnit.SECONDS)
+           .setInputData(workData)
+           .addTag("dev.eriq.filesync")
+           .addTag("dev.eriq.filesync.job.run")
+           .build()
+           ;
+
+        WorkManager workManager = WorkManager.getInstance(context);
+        workManager.enqueue(workRequest);
+    }
+
+    public static class SyncWorker extends Worker {
         public SyncWorker(Context context, WorkerParameters params) {
             super(context, params);
         }
 
         public ListenableWorker.Result doWork() {
-            // TEST
+            String jobName = getInputData().getString("jobName");
+            Database db = null;
+
+            try {
+                db = new Database(getApplicationContext());
+                run(jobName, db);
+            } catch (Exception ex) {
+                ex.printStackTrace(System.err);
+                db.appendLog("Failed to run background job.", jobName, Map.of("error", ex.toString()));
+                return ListenableWorker.Result.failure();
+            } finally {
+                db.close();
+            }
+
+            return ListenableWorker.Result.success();
+        }
+
+        private void run(String jobName, Database db) {
+            SyncJob job = db.getJob(jobName);
+            if (job == null) {
+                return;
+            }
+
+            // Run the job.
+            try {
+                db.appendLog("Background sync started.", jobName);
+                job.runNow();
+                db.appendLog("Background sync completed successfully.", jobName);
+            } catch (Exception ex) {
+                ex.printStackTrace(System.err);
+                db.appendLog("Background job run failed.", jobName, Map.of("error", ex.toString()));
+            }
+
+            // Schedule the next run (even on failure).
+            schedule(job, db, getApplicationContext());
         }
     }
-    */
 }

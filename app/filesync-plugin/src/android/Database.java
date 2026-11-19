@@ -96,6 +96,25 @@ public class Database extends SQLiteOpenHelper {
         return jobs;
     }
 
+    /**
+     * Get a job from the DB by name.
+     * Return null if no matching job is found.
+     */
+    public SyncJob getJob(String name) {
+        if (name == null) {
+            return null;
+        }
+
+        List<SyncJob> jobs = getJobs();
+        for (SyncJob job : jobs) {
+            if (name.equals(job.getName())) {
+                return job;
+            }
+        }
+
+        return null;
+    }
+
     public void upsertJob(SyncJob job) {
         Map<String, Object> jobData = job.toMap();
         Map<String, Object> syncData = (Map<String, Object>)(jobData.get("sync"));
@@ -206,6 +225,14 @@ public class Database extends SQLiteOpenHelper {
         cursor.close();
 
         return logs;
+    }
+
+    public void appendLog(String message) {
+        appendLog(message, null, null);
+    }
+
+    public void appendLog(String message, String jobName) {
+        appendLog(message, jobName, null);
     }
 
     public void appendLog(String message, Map<String, Object> data) {
