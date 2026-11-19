@@ -1,7 +1,6 @@
 import * as edq from '../vendor/edq/js/edq.min.mjs';
 
 import * as storage from './storage.js';
-import * as logs from './logs.js';
 
 const JOB_DEFAULTS = {
     'schedule': '0 * * * *',

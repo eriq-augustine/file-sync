@@ -3,7 +3,8 @@ const exec = require('cordova/exec');
 const SERVICE_NAME = 'FileSyncPlugin';
 const BROWSER_PLATFORM = 'browser';
 
-const ACTION_SCHEDULE = 'schedule';
+const ACTION_ACTIVATE = 'activate';
+const ACTION_DEACTIVATE = 'deactivate';
 const ACTION_SYNC = 'sync';
 const ACTION_TEST_JOB = 'test-job';
 const ACTION_TEST_LOCATION = 'test-location';
@@ -79,12 +80,12 @@ FileSync.prototype.getLogs = function(limit = 0) {
         return createPluginPromise(ACTION_DB_LOGS_GET, [limit]);
     }
 
-    let logs = localGetList(STORAGE_KEY_LOGS);
+    let logs = localGetListItems(STORAGE_KEY_LOGS);
     if (limit > 0) {
-        return logs.slice(0, limit);
+        logs = logs.slice(0, limit);
     }
 
-    return logs;
+    return Promise.resolve(JSON.stringify(logs));
 };
 
 FileSync.prototype.appendLog = function(message, jobName = undefined, data = undefined) {
@@ -112,21 +113,21 @@ FileSync.prototype.appendLog = function(message, jobName = undefined, data = und
 };
 
 function localGetList(key) {
-    let itemString = window.localStorage.getItem(key);
-    if (itemString == null) {
-        return Promise.resolve(JSON.stringify([]));
+    return Promise.resolve(JSON.stringify(localGetListItems(key)));
+}
+
+// Note that this returns a list of items (instead of a JSON string that we usually use).
+function localGetListItems(key) {
+    let itemsString = window.localStorage.getItem(key);
+    if (itemsString == null) {
+        return [];
     }
 
-    return Promise.resolve(itemString);
+    return JSON.parse(itemsString);
 }
 
 function localUpsertFromListByName(key, newItem) {
-    let items = window.localStorage.getItem(key);
-    if (items == null) {
-        items = [];
-    } else {
-        items = JSON.parse(items);
-    }
+    let items = localGetListItems(key);
 
     let found = false;
     for (let i = 0; i < items.length; i++) {
@@ -147,12 +148,7 @@ function localUpsertFromListByName(key, newItem) {
 }
 
 function localRemoveFromListByName(key, name) {
-    let items = window.localStorage.getItem(key);
-    if (items == null) {
-        items = [];
-    } else {
-        items = JSON.parse(items);
-    }
+    let items = localGetListItems(key);
 
     let removeIndex = undefined;
     for (let i = 0; i < items.length; i++) {
@@ -171,13 +167,46 @@ function localRemoveFromListByName(key, name) {
     return Promise.resolve(removeIndex != null);
 }
 
-FileSync.prototype.schedule = function(jobName) {
-    if (window.cordova.platformId === BROWSER_PLATFORM) {
-        FileSync.prototype.appendLog("Completed mock job schedule.", jobName);
-        return Promise.resolve(true);
+function upsertJob(name, modFunc) {
+    let jobs = localGetListItems(STORAGE_KEY_JOBS);
+
+    let targetJob = undefined;
+    for (const job of jobs) {
+        if (job.name === name) {
+            targetJob = job;
+            break;
+        }
     }
 
-    return createPluginPromise(ACTION_SCHEDULE, [jobName]);
+    if (targetJob == null) {
+        throw new Error(`Unable to find job to upsert: '${name}'.`);
+    }
+
+    modFunc(targetJob);
+
+    return localUpsertFromListByName(STORAGE_KEY_JOBS, targetJob);
+}
+
+FileSync.prototype.activate = function(jobName) {
+    if (window.cordova.platformId === BROWSER_PLATFORM) {
+        FileSync.prototype.appendLog("Completed mock job activation.", jobName);
+        return upsertJob(jobName, function(job) {
+            job.active = true;
+        });
+    }
+
+    return createPluginPromise(ACTION_ACTIVATE, [jobName]);
+};
+
+FileSync.prototype.deactivate = function(jobName) {
+    if (window.cordova.platformId === BROWSER_PLATFORM) {
+        FileSync.prototype.appendLog("Completed mock job deactivation.", jobName);
+        return upsertJob(jobName, function(job) {
+            job.active = false;
+        });
+    }
+
+    return createPluginPromise(ACTION_DEACTIVATE, [jobName]);
 };
 
 FileSync.prototype.sync = function(jobData) {
