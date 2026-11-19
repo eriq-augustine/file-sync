@@ -183,7 +183,7 @@ public class JSON {
 
         if (sort) {
             Map<String, Object> entries = new TreeMap<String, Object>(json.toMap());
-            json = new JSONObject(json.toMap());
+            json = new JSONObject(entries);
         }
 
         if (pretty) {

@@ -134,6 +134,7 @@ public class JSONTest {
                 String.format(String.join("\n",
                     "{",
                         "\"__class__\": \"%s\",",
+                        "\"active\": false,",
                         "\"name\": \"\",",
                         "\"schedule\": \"0 4 * * *\",",
                         "\"sync\": {",

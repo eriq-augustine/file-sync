@@ -25,11 +25,17 @@ public class SyncJob extends JSON.MapConverter {
     private String name;
     private Cron schedule;
     private Sync sync;
+    private boolean active;
 
-    public SyncJob(String name, Cron schedule, Sync sync) {
+    public SyncJob(String name, Cron schedule, Sync sync, boolean active) {
         this.name = name;
         this.schedule = schedule;
         this.sync = sync;
+        this.active = active;
+    }
+
+    public SyncJob(String name, Cron schedule, Sync sync) {
+        this(name, schedule, sync, false);
     }
 
     public SyncJob(String name, String scheduleText, Sync sync) {
@@ -52,18 +58,28 @@ public class SyncJob extends JSON.MapConverter {
         return schedule.asString();
     }
 
+    public boolean getActive() {
+        return active;
+    }
+
+    public void setActive(boolean active) {
+        this.active = active;
+    }
+
     protected void serializeToMap(Map<String, Object> data) {
         data.put("name", name);
         data.put("schedule", schedule.asString());
         data.put("sync", sync.toMap());
+        data.put("active", Boolean.valueOf(active));
     }
 
     public static Object fromMap(Map<String, Object> data) {
         String name = data.getOrDefault("name", "").toString();
         Cron schedule = parseSchedule(data.get("schedule").toString());
         Sync sync = (Sync)(JSON.fromMap((Map)(data.get("sync"))));
+        boolean active = Boolean.TRUE.equals(data.getOrDefault("active", Boolean.FALSE));
 
-        return new SyncJob(name, schedule, sync);
+        return new SyncJob(name, schedule, sync, active);
     }
 
     public boolean equals(Object other) {
@@ -77,7 +93,9 @@ public class SyncJob extends JSON.MapConverter {
 
         SyncJob otherJob = (SyncJob)other;
         return (
-            this.schedule.asString().equals(otherJob.schedule.asString())
+            (this.active == otherJob.active)
+            && this.name.equals(otherJob.name)
+            && this.schedule.asString().equals(otherJob.schedule.asString())
             && this.sync.equals(otherJob.sync)
         );
     }
