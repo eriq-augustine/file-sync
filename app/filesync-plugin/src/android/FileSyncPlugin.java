@@ -12,11 +12,13 @@ import dev.eriq.filesync.util.JSON;
 import android.content.Context;
 import androidx.work.Constraints;
 import androidx.work.Data;
+import androidx.work.ExistingPeriodicWorkPolicy;
+import androidx.work.ExistingWorkPolicy;
 import androidx.work.ListenableWorker;
 import androidx.work.NetworkType;
 import androidx.work.OneTimeWorkRequest;
+import androidx.work.PeriodicWorkRequest;
 import androidx.work.WorkManager;
-import androidx.work.WorkRequest;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 import org.apache.cordova.CordovaPlugin;
@@ -32,7 +34,8 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public class FileSyncPlugin extends CordovaPlugin {
-    private static final String ACTION_SCHEDULE = "schedule";
+    private static final String ACTION_ACTIVATE = "activate";
+    private static final String ACTION_DEACTIVATE = "deactivate";
     private static final String ACTION_SYNC = "sync";
     private static final String ACTION_VERSION = "version";
 
@@ -62,12 +65,8 @@ public class FileSyncPlugin extends CordovaPlugin {
 
         db = new Database(cordova.getContext());
 
-        /* TEST - Schedule periodic maintenance worker.
-        WorkRequest workRequest = new OneTimeWorkRequest.Builder(MaintenanceWorker.class)
-           .addTag("dev.eriq.filesync.maintenance")
-           .build()
-           ;
-        */
+        runMaintenance(db, cordova.getContext());
+        scheduleMaintenance(cordova.getContext());
     }
 
     @Override
@@ -122,8 +121,11 @@ public class FileSyncPlugin extends CordovaPlugin {
             case ACTION_DB_LOGS_APPEND:
                 appendLog(args.getString(0), args.getString(1), objectToMap(args.getJSONObject(2)), callbackContext);
                 return;
-            case ACTION_SCHEDULE:
-                schedule(args.getString(0), callbackContext);
+            case ACTION_ACTIVATE:
+                activate(args.getString(0), callbackContext);
+                return;
+            case ACTION_DEACTIVATE:
+                deactivate(args.getString(0), callbackContext);
                 return;
             case ACTION_SYNC:
                 sync(objectToMap(args.getJSONObject(0)), callbackContext);
@@ -152,6 +154,7 @@ public class FileSyncPlugin extends CordovaPlugin {
             jobData.remove("__class__");
 
             jobData.put("name", job.getName());
+            jobData.put("active", job.getActive());
             jobData.put("schedule", job.getSchedule());
 
             jobData.put("sourceName", job.getSync().getSource().getName());
@@ -288,19 +291,41 @@ public class FileSyncPlugin extends CordovaPlugin {
         return JSON.parseObject(data.toString());
     }
 
-    private void schedule(String jobName, CallbackContext callbackContext) {
+    private void activate(String jobName, CallbackContext callbackContext) {
         SyncJob job = db.getJob(jobName);
         if (job == null) {
-            callbackContext.error(String.format("Failed to schedule job '%s', could not find job in database.", jobName));
+            callbackContext.error(String.format("Failed to activate job '%s', could not find job in database.", jobName));
             return;
         }
 
-        schedule(job, db, cordova.getContext());
+        job.setActive(true);
+        db.upsertJob(job);
+
+        schedule(job, cordova.getContext());
 
         callbackContext.success(true);
     }
 
-    private static void schedule(SyncJob job, Database db, Context context) {
+    private void deactivate(String jobName, CallbackContext callbackContext) {
+        SyncJob job = db.getJob(jobName);
+        if (job == null) {
+            callbackContext.error(String.format("Failed to deactivate job '%s', could not find job in database.", jobName));
+            return;
+        }
+
+        job.setActive(false);
+        db.upsertJob(job);
+
+        unschedule(job, cordova.getContext());
+
+        callbackContext.success(true);
+    }
+
+    private static void schedule(SyncJob job, Context context) {
+        schedule(job, context, false);
+    }
+
+    private static void schedule(SyncJob job, Context context, boolean appendWork) {
         Data workData = new Data.Builder()
             .putString("jobName", job.getName())
             .build()
@@ -311,7 +336,7 @@ public class FileSyncPlugin extends CordovaPlugin {
             .build()
             ;
 
-        WorkRequest workRequest = new OneTimeWorkRequest.Builder(SyncWorker.class)
+        OneTimeWorkRequest workRequest = new OneTimeWorkRequest.Builder(SyncWorker.class)
            .setInitialDelay(job.getNextActivationTimeSeconds(), TimeUnit.SECONDS)
            .setInputData(workData)
            .addTag("dev.eriq.filesync")
@@ -319,8 +344,43 @@ public class FileSyncPlugin extends CordovaPlugin {
            .build()
            ;
 
+        ExistingWorkPolicy conflictPloicy = ExistingWorkPolicy.KEEP;
+        if (appendWork) {
+            conflictPloicy = ExistingWorkPolicy.APPEND_OR_REPLACE;
+        }
+
         WorkManager workManager = WorkManager.getInstance(context);
-        workManager.enqueue(workRequest);
+        workManager.enqueueUniqueWork(getWorkKey(job), conflictPloicy, workRequest);
+    }
+
+    private static void unschedule(SyncJob job, Context context) {
+        WorkManager workManager = WorkManager.getInstance(context);
+        workManager.cancelUniqueWork(getWorkKey(job));
+    }
+
+    private static void scheduleMaintenance(Context context) {
+        PeriodicWorkRequest workRequest = new PeriodicWorkRequest.Builder(MaintenanceWorker.class, 1, TimeUnit.HOURS)
+           .addTag("dev.eriq.filesync")
+           .addTag("dev.eriq.filesync.maintenance")
+           .build()
+           ;
+
+        WorkManager workManager = WorkManager.getInstance(context);
+        workManager.enqueueUniquePeriodicWork("dev.eriq.filesync.maintenance", ExistingPeriodicWorkPolicy.KEEP, workRequest);
+    }
+
+    private static String getWorkKey(SyncJob job) {
+        return String.format("dev.eriq.filesync.job.run::%s", job.getName());
+    }
+
+    private static void runMaintenance(Database db, Context context) {
+        for (SyncJob job : db.getJobs()) {
+            if (job.getActive()) {
+                schedule(job, context);
+            } else {
+                unschedule(job, context);
+            }
+        }
     }
 
     public static class SyncWorker extends Worker {
@@ -352,6 +412,12 @@ public class FileSyncPlugin extends CordovaPlugin {
                 return;
             }
 
+            // Check if this job is still active.
+            if (!job.getActive()) {
+                db.appendLog("Job is no longer active, skipping run and not rescheduling.", jobName);
+                return;
+            }
+
             // Run the job.
             try {
                 db.appendLog("Background sync started.", jobName);
@@ -362,8 +428,31 @@ public class FileSyncPlugin extends CordovaPlugin {
                 db.appendLog("Background job run failed.", jobName, Map.of("error", ex.toString()));
             }
 
-            // Schedule the next run (even on failure).
-            schedule(job, db, getApplicationContext());
+            // Schedule the next run, making sure to append it to the uniqie work chain (since this task is still ongoing).
+            schedule(job, getApplicationContext(), true);
+        }
+    }
+
+    public static class MaintenanceWorker extends Worker {
+        public MaintenanceWorker(Context context, WorkerParameters params) {
+            super(context, params);
+        }
+
+        public ListenableWorker.Result doWork() {
+            Database db = null;
+
+            try {
+                db = new Database(getApplicationContext());
+                runMaintenance(db, getApplicationContext());
+            } catch (Exception ex) {
+                ex.printStackTrace(System.err);
+                db.appendLog("Failed to run maintenance.", null, Map.of("error", ex.toString()));
+                return ListenableWorker.Result.failure();
+            } finally {
+                db.close();
+            }
+
+            return ListenableWorker.Result.success();
         }
     }
 }

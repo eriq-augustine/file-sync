@@ -21,6 +21,10 @@ function main() {
     for (const route of ROUTES) {
         edq.core.routing.addRoute(route);
     }
+
+    // Some Android/Cordova situations can cause duplicate requests we don't want to miss.
+    edq.core.routing.setOption('ignoreDuplicateRequests', false);
+
     edq.core.routing.init();
 }
 

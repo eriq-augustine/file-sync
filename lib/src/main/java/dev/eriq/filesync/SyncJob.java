@@ -34,6 +34,10 @@ public class SyncJob extends JSON.MapConverter {
         this.active = active;
     }
 
+    public SyncJob(String name, String scheduleText, Sync sync, boolean active) {
+        this(name, parseSchedule(scheduleText), sync, active);
+    }
+
     public SyncJob(String name, Cron schedule, Sync sync) {
         this(name, schedule, sync, false);
     }

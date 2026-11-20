@@ -65,6 +65,7 @@ public class Database extends SQLiteOpenHelper {
         List<SyncJob> jobs = new ArrayList<SyncJob>();
         while (cursor.moveToNext()) {
             String name = cursor.getString(cursor.getColumnIndexOrThrow("name"));
+            boolean active = (cursor.getInt(cursor.getColumnIndexOrThrow("active")) == 1);
             String schedule = cursor.getString(cursor.getColumnIndexOrThrow("schedule"));
             String sourceName = cursor.getString(cursor.getColumnIndexOrThrow("sourceName"));
             String destName = cursor.getString(cursor.getColumnIndexOrThrow("destName"));
@@ -89,7 +90,7 @@ public class Database extends SQLiteOpenHelper {
             }
 
             Sync sync = new Sync(source, dest, identityChecks, conflictBehavior);
-            jobs.add(new SyncJob(name, schedule, sync));
+            jobs.add(new SyncJob(name, schedule, sync, active));
         }
         cursor.close();
 
@@ -121,6 +122,7 @@ public class Database extends SQLiteOpenHelper {
 
         ContentValues values = new ContentValues();
         values.put("name", (String)(jobData.get("name")));
+        values.put("active", ((Boolean)(jobData.get("active"))).booleanValue() ? 1 : 0);
         values.put("schedule", (String)(jobData.get("schedule")));
         values.put("sourceName", (String)(((Map<String, Object>)(syncData.get("source"))).get("name")));
         values.put("destName", (String)(((Map<String, Object>)(syncData.get("dest"))).get("name")));
@@ -269,6 +271,7 @@ public class Database extends SQLiteOpenHelper {
     private static final String SQL_CREATE_JOBS = String.join("\n",
         "CREATE TABLE Jobs (",
         "    name TEXT PRIMARY KEY,",
+        "    active INTEGER NOT NULL,",
         "    schedule TEXT NOT NULL,",
         "    sourceName TEXT REFERENCES Locations(name) NOT NULL,",
         "    destName TEXT REFERENCES Locations(name) NOT NULL,",
