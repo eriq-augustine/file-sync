@@ -4,12 +4,16 @@ import dev.eriq.filesync.Version;
 import dev.eriq.filesync.Sync;
 import dev.eriq.filesync.SyncJob;
 import dev.eriq.filesync.errors.BadInputError;
+import dev.eriq.filesync.location.LocalLocation;
 import dev.eriq.filesync.location.Location;
 import dev.eriq.filesync.location.LocationUtils;
 import dev.eriq.filesync.plugin.Database;
 import dev.eriq.filesync.util.JSON;
 
+import android.Manifest;
 import android.content.Context;
+import android.content.pm.PackageManager;
+import android.os.Environment;
 import androidx.work.Constraints;
 import androidx.work.Data;
 import androidx.work.ExistingPeriodicWorkPolicy;
@@ -23,6 +27,7 @@ import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 import org.apache.cordova.CordovaPlugin;
 import org.apache.cordova.CallbackContext;
+import org.apache.cordova.PluginResult;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -51,6 +56,12 @@ public class FileSyncPlugin extends CordovaPlugin {
     private static final String ACTION_TEST_LOCATION = "test-location";
     private static final String ACTION_TEST_JOB = "test-job";
 
+    private static final String[] PERMISSIONS = {
+        Manifest.permission.READ_EXTERNAL_STORAGE,
+        Manifest.permission.WRITE_EXTERNAL_STORAGE,
+        Manifest.permission.MANAGE_EXTERNAL_STORAGE,
+    };
+
     private Database db;
 
     public FileSyncPlugin() {
@@ -63,7 +74,15 @@ public class FileSyncPlugin extends CordovaPlugin {
     protected void pluginInitialize() {
         super.pluginInitialize();
 
+        // Set the root for relative dirs.
+        LocalLocation.setGlobalBaseDir(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).toPath());
+        // TEST
+        // LocalLocation.setGlobalBaseDir(cordova.getContext().getFilesDir().toPath());
+        System.err.println("TEST3: " + Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).toPath().toString());
+
         db = new Database(cordova.getContext());
+
+        checkPermissions();
 
         runMaintenance(db, cordova.getContext());
         scheduleMaintenance(cordova.getContext());
@@ -95,7 +114,38 @@ public class FileSyncPlugin extends CordovaPlugin {
         return true;
     }
 
-    public void dispatchAction(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
+    @Override
+    public void onRequestPermissionResult(int requestCode, String[] permissions, int[] grantResults) throws JSONException {
+        // A zero length means the grating was interrupted.
+        boolean granted = (grantResults.length != 0);
+
+        for (int grantResult : grantResults) {
+            if (grantResult == PackageManager.PERMISSION_DENIED) {
+                granted = false;
+                break;
+            }
+        }
+
+        if (!granted) {
+            System.err.println("Plugin permissions not grated.");
+            return;
+        }
+    }
+
+    private void checkPermissions() {
+        List<String> needPermissions = new ArrayList<String>();
+        for (String permission : PERMISSIONS) {
+            if (!cordova.hasPermission(permission)) {
+                needPermissions.add(permission);
+            }
+        }
+
+        if (needPermissions.size() > 0) {
+            cordova.requestPermissions(this, 0, needPermissions.toArray(new String[0]));
+        }
+    }
+
+    private void dispatchAction(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
         switch (action) {
             case ACTION_DB_JOBS_GET:
                 getJobs(callbackContext);

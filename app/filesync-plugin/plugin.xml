@@ -18,6 +18,12 @@
             </feature>
         </config-file>
 
+        <config-file target="AndroidManifest.xml" parent="/*">
+            <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+            <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+            <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
+        </config-file>
+
         <source-file src="src/android/FileSyncPlugin.java" target-dir="src/dev/eriq/filesync/plugin"/>
         <source-file src="src/android/Database.java" target-dir="src/dev/eriq/filesync/plugin"/>
         <lib-file src="src/android/vendor/filesync-uber.jar"/>
