@@ -21,6 +21,11 @@ import java.util.Map;
  * A location that exists on the current machine.
  */
 public class LocalLocation extends Location {
+    /**
+     * A optional base path to prepend to any relative path.
+     */
+    private static Path globalBasePath = null;
+
     public LocalLocation(String name, Path baseDir) {
         super(name, baseDir.toString());
     }
@@ -36,8 +41,23 @@ public class LocalLocation extends Location {
         return new LocalLocation(name, baseDir);
     }
 
+    public static void setGlobalBaseDir(Path value) {
+        globalBasePath = value;
+    }
+
+    /**
+     * Get the base dir, accounting for the global base path.
+     */
+    private Path getLocalBaseDir() {
+        if (globalBasePath == null) {
+            return Path.of(baseDir).toAbsolutePath();
+        }
+
+        return globalBasePath.resolve(baseDir).toAbsolutePath();
+    }
+
     public void open() {
-        Path basePath = Path.of(baseDir).toAbsolutePath();
+        Path basePath = getLocalBaseDir();
 
         if (!DirentUtils.exists(basePath)) {
             try {
@@ -60,10 +80,16 @@ public class LocalLocation extends Location {
     }
 
     public List<Location.DirentInfo> listDir(String relpath) {
-        Path path = Paths.get(baseDir, relpath).toAbsolutePath();
+        Path path = getLocalBaseDir().resolve(relpath);
 
-        List<Location.DirentInfo> dirents = new ArrayList<Location.DirentInfo>();
-        for (File dirent : path.toFile().listFiles()) {
+        List<Location.DirentInfo> parsedDirents = new ArrayList<Location.DirentInfo>();
+
+        File[] dirents = path.toFile().listFiles();
+        if (dirents == null) {
+            return parsedDirents;
+        }
+
+        for (File dirent : dirents) {
             Location.DirentInfo.Type type = Location.DirentInfo.Type.OTHER;
             if (DirentUtils.isLink(dirent.toPath())) {
                 type = Location.DirentInfo.Type.SYMLINK;
@@ -73,14 +99,14 @@ public class LocalLocation extends Location {
                 type = Location.DirentInfo.Type.DIR;
             }
 
-            dirents.add(new Location.DirentInfo(dirent.getName(), type, dirent.length(), dirent.lastModified()));
+            parsedDirents.add(new Location.DirentInfo(dirent.getName(), type, dirent.length(), dirent.lastModified()));
         }
 
-        return dirents;
+        return parsedDirents;
     }
 
     public void makeDir(String relpath) {
-        Path path = Paths.get(baseDir, relpath).toAbsolutePath();
+        Path path = getLocalBaseDir().resolve(relpath);
 
         try {
             Files.createDirectory(path);
@@ -90,7 +116,7 @@ public class LocalLocation extends Location {
     }
 
     public void removeDir(String relpath) {
-        Path path = Paths.get(baseDir, relpath).toAbsolutePath();
+        Path path = getLocalBaseDir().resolve(relpath);
 
         try {
             Files.delete(path);
@@ -100,15 +126,15 @@ public class LocalLocation extends Location {
     }
 
     public void fetchFile(String relpath, Path tempPath) {
-        copyFile(Paths.get(baseDir, relpath).toAbsolutePath(), tempPath);
+        copyFile(getLocalBaseDir().resolve(relpath), tempPath);
     }
 
     public void putFile(Path tempPath, String relpath) {
-        copyFile(tempPath, Paths.get(baseDir, relpath).toAbsolutePath());
+        copyFile(tempPath, getLocalBaseDir().resolve(relpath));
     }
 
     public void removeFile(String relpath) {
-        Path path = Paths.get(baseDir, relpath).toAbsolutePath();
+        Path path = getLocalBaseDir().resolve(relpath);
 
         try {
             Files.delete(path);
@@ -118,7 +144,7 @@ public class LocalLocation extends Location {
     }
 
     public String readLink(String relpath) {
-        Path path = Paths.get(baseDir, relpath).toAbsolutePath();
+        Path path = getLocalBaseDir().resolve(relpath);
 
         try {
             return Files.readSymbolicLink(path).toString();
@@ -128,7 +154,7 @@ public class LocalLocation extends Location {
     }
 
     public void createLink(String relpath, String target) {
-        Path path = Paths.get(baseDir, relpath).toAbsolutePath();
+        Path path = getLocalBaseDir().resolve(relpath);
 
         try {
             Files.createSymbolicLink(path, Path.of(target));
@@ -138,7 +164,7 @@ public class LocalLocation extends Location {
     }
 
     public void removeLink(String relpath) {
-        Path path = Paths.get(baseDir, relpath).toAbsolutePath();
+        Path path = getLocalBaseDir().resolve(relpath);
 
         try {
             Files.delete(path);
