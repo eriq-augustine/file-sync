@@ -16,22 +16,28 @@ function renderExistingLogs() {
 
     edq.render.loading.withPromise(storage.loadLogs(), container).then(function(logs) {
         for (let i = (logs.length - 1); i >= 0; i--) {
-            container.appendChild(renderLog(logs[i], ['subsection', 'theme-primary']));
+            container.appendChild(renderLog(logs[i], true, ['subsection', 'theme-primary']));
         }
     });
 
     return container;
 }
 
-function renderLog(log, classes = []) {
+function renderLog(log, includeJobName = true, classes = []) {
     let container = document.createElement('div');
     container.classList.add('log');
     container.classList.add(...classes);
 
     let children = [];
 
+    let message = edq.model.timestamp.timestampToString(log.timestamp, true);
+    if (includeJobName && (log.jobName != null)) {
+        message += ` [${log.jobName}]`;
+    }
+    message += ` -- ${log.message}`;
+
     let text = document.createElement('span');
-    text.textContent = `${edq.model.timestamp.timestampToString(log.timestamp, true)} -- ${log.message}`;
+    text.textContent = message;
     children.push(text);
 
     if ((log.data != null) && (Object.keys(log.data).length > 0)) {

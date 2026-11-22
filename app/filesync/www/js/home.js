@@ -77,7 +77,7 @@ function renderJobs(container, jobs, logs) {
             footer.appendChild(footerLabel);
 
             for (const log of (logsByJob[job.name] ?? []).slice(0, MAX_JOB_LOGS)) {
-                footer.append(logsModule.renderLog(log));
+                footer.append(logsModule.renderLog(log, false));
             }
 
             let stateButton = document.createElement('button');
