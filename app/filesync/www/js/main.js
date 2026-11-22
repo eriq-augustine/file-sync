@@ -16,7 +16,7 @@ const ROUTES = [
 
 function main() {
     edq.render.icons.replacePlaceholders();
-    edq.util.brightness.initBrightmode();
+    edq.util.brightness.initBrightmode(false);
 
     for (const route of ROUTES) {
         edq.core.routing.addRoute(route);
