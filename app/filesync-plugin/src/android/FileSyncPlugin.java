@@ -12,8 +12,11 @@ import dev.eriq.filesync.util.JSON;
 
 import android.Manifest;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Environment;
+import android.provider.Settings;
 import androidx.work.Constraints;
 import androidx.work.Data;
 import androidx.work.ExistingPeriodicWorkPolicy;
@@ -32,6 +35,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -75,10 +79,8 @@ public class FileSyncPlugin extends CordovaPlugin {
         super.pluginInitialize();
 
         // Set the root for relative dirs.
-        LocalLocation.setGlobalBaseDir(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).toPath());
-        // TEST
-        // LocalLocation.setGlobalBaseDir(cordova.getContext().getFilesDir().toPath());
-        System.err.println("TEST3: " + Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).toPath().toString());
+        Path globalBaseDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).toPath().getParent();
+        LocalLocation.setGlobalBaseDir(globalBaseDir);
 
         db = new Database(cordova.getContext());
 
@@ -133,6 +135,8 @@ public class FileSyncPlugin extends CordovaPlugin {
     }
 
     private void checkPermissions() {
+        // Normal Permissions
+
         List<String> needPermissions = new ArrayList<String>();
         for (String permission : PERMISSIONS) {
             if (!cordova.hasPermission(permission)) {
@@ -142,6 +146,19 @@ public class FileSyncPlugin extends CordovaPlugin {
 
         if (needPermissions.size() > 0) {
             cordova.requestPermissions(this, 0, needPermissions.toArray(new String[0]));
+        }
+
+        // Special file access permission.
+
+        if (!Environment.isExternalStorageManager()) {
+            Uri uri = Uri.parse("package:" + cordova.getContext().getPackageName());
+
+            // Documentation says `ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION`, but `ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION` seems to work:
+            // https://developer.android.com/training/data-storage/manage-all-files
+            Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, uri);
+            intent.addCategory("android.intent.category.DEFAULT");
+
+            cordova.getContext().startActivity(intent);
         }
     }
 
