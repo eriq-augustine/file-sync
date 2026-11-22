@@ -16,20 +16,29 @@ function renderExistingLogs() {
 
     edq.render.loading.withPromise(storage.loadLogs(), container).then(function(logs) {
         for (let i = (logs.length - 1); i >= 0; i--) {
-            container.appendChild(renderLog(logs[i]));
+            container.appendChild(renderLog(logs[i], ['subsection', 'theme-primary']));
         }
     });
 
     return container;
 }
 
-function renderLog(log) {
+function renderLog(log, classes = []) {
     let container = document.createElement('div');
     container.classList.add('log');
+    container.classList.add(...classes);
 
-    let codeContainer = edq.render.code.block(edq.util.json.pretty(log), 'json');
+    let children = [];
 
-    container.replaceChildren(codeContainer);
+    let text = document.createElement('span');
+    text.textContent = `${edq.model.timestamp.timestampToString(log.timestamp, true)} -- ${log.message}`;
+    children.push(text);
+
+    if ((log.data != null) && (Object.keys(log.data).length > 0)) {
+        children.push(edq.render.code.block(edq.util.json.pretty(log.data), 'json'));
+    }
+
+    container.replaceChildren(...children);
 
     return container;
 }
