@@ -4,7 +4,7 @@ import * as jobsModule from './jobs.js';
 import * as logsModule from './logs.js';
 import * as storage from './storage.js';
 
-const MAX_JOB_LOGS = 4;
+const MAX_JOB_LOGS = 2;
 
 function renderPage(request) {
     let container = document.querySelector('.page-content');

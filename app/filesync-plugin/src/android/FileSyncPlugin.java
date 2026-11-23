@@ -270,18 +270,7 @@ public class FileSyncPlugin extends CordovaPlugin {
 
     private void sync(Map<String, Object> jobData, CallbackContext callbackContext) {
         SyncJob job = buildJob(jobData);
-
-        try {
-            db.appendLog("Manual sync started.", job.getName());
-            job.runNow();
-            db.appendLog("Manual sync completed successfully.", job.getName());
-        } catch (Exception ex) {
-            db.appendLog("Manual sync failed.", job.getName(), Map.of("error", ex.toString()));
-            ex.printStackTrace(System.err);
-            callbackContext.error(String.format("Failed to run job: '%s'.", ex));
-            return;
-        }
-
+        schedule(job, cordova.getContext(), false, true);
         callbackContext.success(true);
     }
 
@@ -389,12 +378,13 @@ public class FileSyncPlugin extends CordovaPlugin {
     }
 
     private static void schedule(SyncJob job, Context context) {
-        schedule(job, context, false);
+        schedule(job, context, false, false);
     }
 
-    private static void schedule(SyncJob job, Context context, boolean appendWork) {
+    private static void schedule(SyncJob job, Context context, boolean appendWork, boolean isManual) {
         Data workData = new Data.Builder()
             .putString("jobName", job.getName())
+            .putBoolean("isManual", isManual)
             .build()
             ;
 
@@ -403,8 +393,13 @@ public class FileSyncPlugin extends CordovaPlugin {
             .build()
             ;
 
+        long delaySecs = 1;
+        if (!isManual) {
+            delaySecs = job.getNextActivationTimeSeconds();
+        }
+
         OneTimeWorkRequest workRequest = new OneTimeWorkRequest.Builder(SyncWorker.class)
-           .setInitialDelay(job.getNextActivationTimeSeconds(), TimeUnit.SECONDS)
+           .setInitialDelay(delaySecs, TimeUnit.SECONDS)
            .setInputData(workData)
            .addTag("dev.eriq.filesync")
            .addTag("dev.eriq.filesync.job.run")
@@ -417,12 +412,12 @@ public class FileSyncPlugin extends CordovaPlugin {
         }
 
         WorkManager workManager = WorkManager.getInstance(context);
-        workManager.enqueueUniqueWork(getWorkKey(job), conflictPloicy, workRequest);
+        workManager.enqueueUniqueWork(getWorkKey(job, isManual), conflictPloicy, workRequest);
     }
 
     private static void unschedule(SyncJob job, Context context) {
         WorkManager workManager = WorkManager.getInstance(context);
-        workManager.cancelUniqueWork(getWorkKey(job));
+        workManager.cancelUniqueWork(getWorkKey(job, false));
     }
 
     private static void scheduleMaintenance(Context context) {
@@ -436,8 +431,13 @@ public class FileSyncPlugin extends CordovaPlugin {
         workManager.enqueueUniquePeriodicWork("dev.eriq.filesync.maintenance", ExistingPeriodicWorkPolicy.KEEP, workRequest);
     }
 
-    private static String getWorkKey(SyncJob job) {
-        return String.format("dev.eriq.filesync.job.run::%s", job.getName());
+    private static String getWorkKey(SyncJob job, boolean isManual) {
+        String label = "background";
+        if (isManual) {
+            label = "manual";
+        }
+
+        return String.format("dev.eriq.filesync.job.run::%s::%s", job.getName(), label);
     }
 
     private static void runMaintenance(Database db, Context context) {
@@ -458,11 +458,14 @@ public class FileSyncPlugin extends CordovaPlugin {
         @Override
         public ListenableWorker.Result doWork() {
             String jobName = getInputData().getString("jobName");
+            boolean isManual = getInputData().getBoolean("isManual", false);
             Database db = null;
+
+            // TODO - Need a lock to handle manual/background race.
 
             try {
                 db = new Database(getApplicationContext());
-                run(jobName, db);
+                run(jobName, db, isManual);
             } catch (Exception ex) {
                 ex.printStackTrace(System.err);
                 db.appendLog("Failed to run background job.", jobName, Map.of("error", ex.toString()));
@@ -474,7 +477,7 @@ public class FileSyncPlugin extends CordovaPlugin {
             return ListenableWorker.Result.success();
         }
 
-        private void run(String jobName, Database db) {
+        private void run(String jobName, Database db, boolean isManual) {
             SyncJob job = db.getJob(jobName);
             if (job == null) {
                 return;
@@ -486,20 +489,27 @@ public class FileSyncPlugin extends CordovaPlugin {
                 return;
             }
 
-            // Run the job.
-            try {
-                db.appendLog("Background sync started.", jobName);
-                Sync.SyncResult result = job.runNow();
-                db.appendLog("Background sync completed successfully.", jobName);
-
-                System.err.println(result.toJSON(true, true));
-            } catch (Exception ex) {
-                ex.printStackTrace(System.err);
-                db.appendLog("Background job run failed.", jobName, Map.of("error", ex.toString()));
+            String jobLabel = "Background";
+            if (isManual) {
+                jobLabel = "Manual";
             }
 
+            // Run the job.
+            try {
+                db.appendLog(String.format("%s sync started.", jobLabel), jobName);
+                Sync.SyncResult result = job.runNow();
+                db.appendLog(String.format("%s sync completed successfully.", jobLabel), jobName, result.toMap());
+            } catch (Exception ex) {
+                ex.printStackTrace(System.err);
+                db.appendLog(String.format("%s job run failed.", jobLabel), jobName, Map.of("error", ex.toString()));
+            }
+
+            // TODO - If the job is stopped, we may not reschedule.
+
             // Schedule the next run, making sure to append it to the uniqie work chain (since this task is still ongoing).
-            schedule(job, getApplicationContext(), true);
+            if (!isManual) {
+                schedule(job, getApplicationContext(), true, false);
+            }
         }
     }
 
