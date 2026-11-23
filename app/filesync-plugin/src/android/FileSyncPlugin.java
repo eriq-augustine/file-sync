@@ -455,6 +455,7 @@ public class FileSyncPlugin extends CordovaPlugin {
             super(context, params);
         }
 
+        @Override
         public ListenableWorker.Result doWork() {
             String jobName = getInputData().getString("jobName");
             Database db = null;
@@ -488,8 +489,10 @@ public class FileSyncPlugin extends CordovaPlugin {
             // Run the job.
             try {
                 db.appendLog("Background sync started.", jobName);
-                job.runNow();
+                Sync.SyncResult result = job.runNow();
                 db.appendLog("Background sync completed successfully.", jobName);
+
+                System.err.println(result.toJSON(true, true));
             } catch (Exception ex) {
                 ex.printStackTrace(System.err);
                 db.appendLog("Background job run failed.", jobName, Map.of("error", ex.toString()));
