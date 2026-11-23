@@ -60,6 +60,10 @@ public class JSON {
             throw new NotSupportedError("Child class has not implemented JSON (map) deserialization.");
         }
 
+        public String toString() {
+            return toJSON();
+        }
+
         public String toJSON() {
             return toJSON(DEFAULT_PRETTY, DEFAULT_SORT);
         }

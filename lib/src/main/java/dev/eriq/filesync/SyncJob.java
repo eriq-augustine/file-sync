@@ -115,8 +115,8 @@ public class SyncJob extends JSON.MapConverter {
     /**
      * Run a sync job now regardless of the schedule.
      */
-    public void runNow() {
-        sync.sync();
+    public Sync.SyncResult runNow() {
+        return sync.sync();
     }
 
     /**

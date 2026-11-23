@@ -73,36 +73,96 @@ public class SyncTest {
     }
 
     private void testSyncSimpleBase(LocationFactory sourceFactory, LocationFactory destFactory) {
-        List<List<TestDirent>> testCases = List.of(
+        class TestCase {
+            public List<TestDirent> dirents;
+            public Sync.SyncResult expectedResult;
+
+            public TestCase(
+                    List<TestDirent> dirents,
+                    Sync.SyncResult expectedResult) {
+                this.dirents = dirents;
+                this.expectedResult = expectedResult;
+            }
+        }
+
+        List<TestCase> testCases = List.of(
             // Empty
-            List.of(),
+            new TestCase(
+                List.of(),
+                new Sync.SyncResult(
+                    1,
+                    0, 0, 0,
+                    0, 0,
+                    0
+                )
+            ),
 
             // Text File
-            List.of(
-                new TestDirent.File("a.txt", "abc")
+            new TestCase(
+                List.of(
+                    new TestDirent.File("a.txt", "abc")
+                ),
+                new Sync.SyncResult(
+                    1,
+                    0, 1, 0,
+                    0, 0,
+                    0
+                )
             ),
 
             // Dir
-            List.of(
-                new TestDirent.Dir("somedir")
+            new TestCase(
+                List.of(
+                    new TestDirent.Dir("somedir")
+                ),
+                new Sync.SyncResult(
+                    2,
+                    1, 0, 0,
+                    0, 0,
+                    0
+                )
             ),
 
             // Link
-            List.of(
-                new TestDirent.File("someFile.txt", "abc"),
-                new TestDirent.Link("someLink.txt", "someFile.txt")
+            new TestCase(
+                List.of(
+                    new TestDirent.File("someFile.txt", "abc"),
+                    new TestDirent.Link("someLink.txt", "someFile.txt")
+                ),
+                new Sync.SyncResult(
+                    1,
+                    0, 1, 1,
+                    0, 0,
+                    0
+                )
             ),
 
             // Link (Broken)
-            List.of(
-                new TestDirent.Link("someLink.txt", "someFile.txt")
+            new TestCase(
+                List.of(
+                    new TestDirent.Link("someLink.txt", "someFile.txt")
+                ),
+                new Sync.SyncResult(
+                    1,
+                    0, 0, 1,
+                    0, 0,
+                    0
+                )
             ),
 
             // Multiple Dirents
-            List.of(
-                new TestDirent.File("a.txt", "abc"),
-                new TestDirent.File("dir1/b.txt", "123"),
-                new TestDirent.File("dir1/dir2/c.txt", "abc123")
+            new TestCase(
+                List.of(
+                    new TestDirent.File("a.txt", "abc"),
+                    new TestDirent.File("dir1/b.txt", "123"),
+                    new TestDirent.File("dir1/dir2/c.txt", "abc123")
+                ),
+                new Sync.SyncResult(
+                    3,
+                    2, 3, 0,
+                    0, 0,
+                    0
+                )
             )
         );
 
@@ -112,7 +172,7 @@ public class SyncTest {
         Path destLocationDir = DirentUtils.getTempDir("dest");
 
         for (int i = 0; i < testCases.size(); i++) {
-            List<TestDirent> dirents = testCases.get(i);
+            TestCase testCase = testCases.get(i);
 
             try {
                 // Clear source and dest dirs.
@@ -122,7 +182,7 @@ public class SyncTest {
                 Files.createDirectories(destLocationDir);
 
                 // Setup the initial source files.
-                TestDirent.loadTestDir(stagingTempDir, dirents);
+                TestDirent.loadTestDir(stagingTempDir, testCase.dirents);
 
                 // Setup the final output dir.
                 DirentUtils.removeDirent(finalOutputDir);
@@ -137,14 +197,16 @@ public class SyncTest {
 
                 // Sync between test case locations.
                 sync = new Sync(source, dest, EnumSet.noneOf(Sync.IdentityCheck.class), Sync.ConflictBehavior.SKIP);
-                sync.sync();
+                Sync.SyncResult result = sync.sync();
 
                 // Sync from the test case destination to the final output.
                 sync = new Sync(dest, new LocalLocation(finalOutputDir));
                 sync.sync();
 
                 // Ensure the final output matches the specification.
-                TestDirent.matchTestDir(finalOutputDir, dirents);
+                TestDirent.matchTestDir(finalOutputDir, testCase.dirents);
+
+                Assertions.assertEquals(testCase.expectedResult, result);
             } catch (TestAbortedException ex) {
                 // Ignore
                 System.out.println(String.format("Skipped test case %d: '%s'.", i, ex.getMessage()));
@@ -170,12 +232,15 @@ public class SyncTest {
             public List<TestDirent> destDirents;
             public List<TestDirent> expectedDirents;
 
+            public Sync.SyncResult expectedResult;
+
             public TestCase(
                     Location source, Location dest,
                     EnumSet<Sync.IdentityCheck> identityChecks, Sync.ConflictBehavior conflictBehavior,
                     List<TestDirent> sourceDirents,
                     List<TestDirent> destDirents,
-                    List<TestDirent> expectedDirents) {
+                    List<TestDirent> expectedDirents,
+                    Sync.SyncResult expectedResult) {
                 this.source = source;
                 this.dest = dest;
                 this.identityChecks = identityChecks;
@@ -183,6 +248,7 @@ public class SyncTest {
                 this.sourceDirents = sourceDirents;
                 this.destDirents = destDirents;
                 this.expectedDirents = expectedDirents;
+                this.expectedResult = expectedResult;
             }
         }
 
@@ -204,6 +270,12 @@ public class SyncTest {
                 ),
                 List.of(
                     new TestDirent.File("a.txt", "abc")
+                ),
+                new Sync.SyncResult(
+                    1,
+                    0, 1, 0,
+                    0, 1,
+                    0
                 )
             ),
             new TestCase(
@@ -219,6 +291,12 @@ public class SyncTest {
                 ),
                 List.of(
                     new TestDirent.Dir("a.txt")
+                ),
+                new Sync.SyncResult(
+                    2,
+                    1, 0, 0,
+                    0, 1,
+                    0
                 )
             ),
 
@@ -236,6 +314,12 @@ public class SyncTest {
                 ),
                 List.of(
                     new TestDirent.File("a.txt", "abc")
+                ),
+                new Sync.SyncResult(
+                    1,
+                    0, 1, 0,
+                    0, 1,
+                    0
                 )
             ),
 
@@ -253,6 +337,12 @@ public class SyncTest {
                 ),
                 List.of(
                     (new TestDirent.File("a.txt", "abc")).setModTime(0)
+                ),
+                new Sync.SyncResult(
+                    1,
+                    0, 1, 0,
+                    0, 1,
+                    0
                 )
             ),
 
@@ -270,6 +360,12 @@ public class SyncTest {
                 ),
                 List.of(
                     (new TestDirent.File("a.txt", "abc")).setModTime(0)
+                ),
+                new Sync.SyncResult(
+                    1,
+                    0, 1, 0,
+                    0, 1,
+                    0
                 )
             ),
 
@@ -287,6 +383,12 @@ public class SyncTest {
                 ),
                 List.of(
                     (new TestDirent.File("a.txt", "abc")).setModTime(0)
+                ),
+                new Sync.SyncResult(
+                    1,
+                    0, 1, 0,
+                    0, 1,
+                    0
                 )
             ),
 
@@ -304,6 +406,12 @@ public class SyncTest {
                 ),
                 List.of(
                     (new TestDirent.File("a.txt", "abc")).setModTime(0)
+                ),
+                new Sync.SyncResult(
+                    1,
+                    0, 1, 0,
+                    0, 1,
+                    0
                 )
             ),
 
@@ -321,6 +429,12 @@ public class SyncTest {
                 ),
                 List.of(
                     new TestDirent.File("a.txt", "ABC")
+                ),
+                new Sync.SyncResult(
+                    1,
+                    0, 0, 0,
+                    1, 0,
+                    0
                 )
             ),
 
@@ -338,6 +452,12 @@ public class SyncTest {
                 ),
                 List.of(
                     new TestDirent.File("a.txt", "abc")
+                ),
+                new Sync.SyncResult(
+                    1,
+                    0, 1, 0,
+                    0, 1,
+                    0
                 )
             ),
 
@@ -355,6 +475,12 @@ public class SyncTest {
                 ),
                 List.of(
                     new TestDirent.File("a.txt", "ABC")
+                ),
+                new Sync.SyncResult(
+                    1,
+                    0, 0, 0,
+                    1, 0,
+                    0
                 )
             ),
 
@@ -372,6 +498,12 @@ public class SyncTest {
                 ),
                 List.of(
                     new TestDirent.File("a.txt", "abc")
+                ),
+                new Sync.SyncResult(
+                    1,
+                    0, 1, 0,
+                    0, 1,
+                    0
                 )
             ),
 
@@ -389,6 +521,12 @@ public class SyncTest {
                 ),
                 List.of(
                     (new TestDirent.File("a.txt", "ABC")).setModTime(123)
+                ),
+                new Sync.SyncResult(
+                    1,
+                    0, 0, 0,
+                    1, 0,
+                    0
                 )
             ),
 
@@ -406,6 +544,12 @@ public class SyncTest {
                 ),
                 List.of(
                     (new TestDirent.File("a.txt", "abc")).setModTime(123)
+                ),
+                new Sync.SyncResult(
+                    1,
+                    0, 1, 0,
+                    0, 1,
+                    0
                 )
             ),
 
@@ -423,6 +567,12 @@ public class SyncTest {
                 ),
                 List.of(
                     (new TestDirent.File("a.txt", "ABC")).setModTime(123)
+                ),
+                new Sync.SyncResult(
+                    1,
+                    0, 0, 0,
+                    1, 0,
+                    0
                 )
             ),
 
@@ -440,6 +590,12 @@ public class SyncTest {
                 ),
                 List.of(
                     (new TestDirent.File("a.txt", "abc")).setModTime(123)
+                ),
+                new Sync.SyncResult(
+                    1,
+                    0, 1, 0,
+                    0, 1,
+                    0
                 )
             ),
 
@@ -458,6 +614,12 @@ public class SyncTest {
                 ),
                 List.of(
                     new TestDirent.File("a.txt", "abc")
+                ),
+                new Sync.SyncResult(
+                    1,
+                    0, 1, 0,
+                    0, 1,
+                    0
                 )
             )
         );
@@ -472,10 +634,13 @@ public class SyncTest {
 
                 // Sync between test case locations.
                 Sync sync = new Sync(testCase.source, testCase.dest, testCase.identityChecks, testCase.conflictBehavior);
-                sync.sync();
+                Sync.SyncResult result = sync.sync();
 
                 // Ensure the final output matches the specification.
                 TestDirent.matchTestDir(destTempDir, testCase.expectedDirents);
+
+                // Check the result.
+                Assertions.assertEquals(testCase.expectedResult, result);
             } catch (AssertionError ex) {
                 throw new AssertionError(String.format("Failed test case %d.", i), ex);
             } catch (Exception ex) {
