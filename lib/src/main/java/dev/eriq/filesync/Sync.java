@@ -232,7 +232,7 @@ public class Sync extends JSON.MapConverter {
             String direntRelpath = source.joinPath(relpath, dirent.getName());
 
             try {
-                syncDir(result, dirent, direntRelpath, destDirents, fringe);
+                syncDirent(result, dirent, direntRelpath, destDirents, fringe);
             } catch (FileSyncError ex) {
                 result.errorCount++;
                 logger.warning(String.format("Failed to sync dirent: '%s'.\n%s", direntRelpath, ex.toLogString()));
@@ -244,7 +244,7 @@ public class Sync extends JSON.MapConverter {
      * Sync a single dirent.
      * Any discovered directories will be placed into the fringe.
      */
-    private void syncDir(SyncResult result, Location.DirentInfo dirent, String relpath, Map<String, Location.DirentInfo> destDirents, Queue<String> fringe) {
+    private void syncDirent(SyncResult result, Location.DirentInfo dirent, String relpath, Map<String, Location.DirentInfo> destDirents, Queue<String> fringe) {
         // Check for a name match.
         // A match may mean a conflict, but not necessarily (e.g., it just a matching directory).
         Location.DirentInfo destDirent = destDirents.get(dirent.getName());
