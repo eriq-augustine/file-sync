@@ -3,6 +3,7 @@ package dev.eriq.filesync;
 import dev.eriq.filesync.Sync;
 import dev.eriq.filesync.errors.BadInputError;
 import dev.eriq.filesync.util.JSON;
+import dev.eriq.filesync.util.Lockfile;
 
 import com.cronutils.model.Cron;
 import com.cronutils.model.CronType;
@@ -10,6 +11,8 @@ import com.cronutils.model.definition.CronDefinitionBuilder;
 import com.cronutils.model.time.ExecutionTime;
 import com.cronutils.parser.CronParser;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.ZonedDateTime;
 import java.util.Map;
 
@@ -22,7 +25,12 @@ import java.util.Map;
  *  - <a href="https://crontab.guru/">Helper Tool</a>
  */
 public class SyncJob extends JSON.MapConverter {
+    /**
+     * The name of a job.
+     * Jobs with the same name are considered the same job in terms for storage (DB key) and locking.
+     */
     private String name;
+
     private Cron schedule;
     private Sync sync;
     private boolean active;
@@ -115,8 +123,46 @@ public class SyncJob extends JSON.MapConverter {
     /**
      * Run a sync job now regardless of the schedule.
      */
+    public Sync.SyncResult runNow(Path lockPath) {
+        Lockfile lock = new Lockfile(lockPath);
+
+        Sync.SyncResult result = null;
+        try {
+            lock.acquire();
+            result = sync.sync();
+        } finally {
+            lock.release();
+        }
+
+        return result;
+    }
+
+    /**
+     * Like runNow(), but with the default lock path for this job.
+     */
     public Sync.SyncResult runNow() {
-        return sync.sync();
+        return runNow(Paths.get(System.getProperty("java.io.tmpdir"), getLockName()));
+    }
+
+    /**
+     * Get the recommended locking key for this job.
+     * Will use the name if one exists, and fallback to a general one (which will lock any other jobs without a name).
+     */
+    public String getLockName() {
+        String textName = "";
+        if (name != null) {
+            textName = name;
+        }
+
+        // Clean
+        textName = textName.strip().replaceAll("\\W", "");
+
+        // Add prefix.
+        if (textName.length() != 0) {
+            textName = "-" + textName;
+        }
+
+        return String.format("filesync-lock%s.pid", textName);
     }
 
     /**
