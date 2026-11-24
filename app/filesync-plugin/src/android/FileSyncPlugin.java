@@ -9,6 +9,7 @@ import dev.eriq.filesync.location.Location;
 import dev.eriq.filesync.location.LocationUtils;
 import dev.eriq.filesync.plugin.Database;
 import dev.eriq.filesync.util.JSON;
+import dev.eriq.filesync.util.Lockfile;
 
 import android.Manifest;
 import android.content.Context;
@@ -16,6 +17,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Environment;
+import android.os.Process;
 import android.provider.Settings;
 import androidx.work.Constraints;
 import androidx.work.Data;
@@ -78,16 +80,27 @@ public class FileSyncPlugin extends CordovaPlugin {
     protected void pluginInitialize() {
         super.pluginInitialize();
 
-        // Set the root for relative dirs.
-        Path globalBaseDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).toPath().getParent();
-        LocalLocation.setGlobalBaseDir(globalBaseDir);
-
-        db = new Database(cordova.getContext());
+        db = setupForjob(cordova.getContext());
 
         checkPermissions();
 
         runMaintenance(db, cordova.getContext());
         scheduleMaintenance(cordova.getContext());
+    }
+
+    /**
+     * Do setup activities that are needed for a job to run and return a database to use.
+     * Note that these are necessary outside the scope of a plugin class, since jobs may be run in the background.
+     * Hence, they are grouped together in a single function.
+     */
+    private static Database setupForjob(Context context) {
+        // Set the root for relative dirs.
+        Path globalBaseDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).toPath().getParent();
+        LocalLocation.setGlobalBaseDir(globalBaseDir);
+
+        Lockfile.setFileContents("" + Process.myPid());
+
+        return new Database(context);
     }
 
     @Override
@@ -388,8 +401,13 @@ public class FileSyncPlugin extends CordovaPlugin {
             .build()
             ;
 
+        NetworkType requiredNetworkType = NetworkType.CONNECTED;
+        if (isManual) {
+            requiredNetworkType = NetworkType.UNMETERED;
+        }
+
         Constraints constraints = new Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.UNMETERED)
+            .setRequiredNetworkType(requiredNetworkType)
             .build()
             ;
 
@@ -461,10 +479,8 @@ public class FileSyncPlugin extends CordovaPlugin {
             boolean isManual = getInputData().getBoolean("isManual", false);
             Database db = null;
 
-            // TODO - Need a lock to handle manual/background race.
-
             try {
-                db = new Database(getApplicationContext());
+                db = setupForjob(getApplicationContext());
                 run(jobName, db, isManual);
             } catch (Exception ex) {
                 ex.printStackTrace(System.err);
@@ -484,7 +500,7 @@ public class FileSyncPlugin extends CordovaPlugin {
             }
 
             // Check if this job is still active.
-            if (!job.getActive()) {
+            if (!isManual && !job.getActive()) {
                 db.appendLog("Job is no longer active, skipping run and not rescheduling.", jobName);
                 return;
             }
@@ -522,7 +538,7 @@ public class FileSyncPlugin extends CordovaPlugin {
             Database db = null;
 
             try {
-                db = new Database(getApplicationContext());
+                db = setupForjob(getApplicationContext());
                 runMaintenance(db, getApplicationContext());
             } catch (Exception ex) {
                 ex.printStackTrace(System.err);
