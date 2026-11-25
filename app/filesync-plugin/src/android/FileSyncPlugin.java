@@ -15,6 +15,7 @@ import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.net.ConnectivityManager;
 import android.net.Uri;
 import android.os.Environment;
 import android.os.Process;
@@ -401,9 +402,9 @@ public class FileSyncPlugin extends CordovaPlugin {
             .build()
             ;
 
-        NetworkType requiredNetworkType = NetworkType.CONNECTED;
+        NetworkType requiredNetworkType = NetworkType.UNMETERED;
         if (isManual) {
-            requiredNetworkType = NetworkType.UNMETERED;
+            requiredNetworkType = NetworkType.CONNECTED;
         }
 
         Constraints constraints = new Constraints.Builder()
@@ -468,6 +469,15 @@ public class FileSyncPlugin extends CordovaPlugin {
         }
     }
 
+    /**
+     * Check if the connected network is one we want to transfer files on.
+     * If false, avoid heavy traffic.
+     */
+    private static boolean networkUsable(Context context) {
+        ConnectivityManager manager = (ConnectivityManager)(context.getSystemService(Context.CONNECTIVITY_SERVICE));
+        return !manager.isActiveNetworkMetered();
+    }
+
     public static class SyncWorker extends Worker {
         public SyncWorker(Context context, WorkerParameters params) {
             super(context, params);
@@ -477,31 +487,44 @@ public class FileSyncPlugin extends CordovaPlugin {
         public ListenableWorker.Result doWork() {
             String jobName = getInputData().getString("jobName");
             boolean isManual = getInputData().getBoolean("isManual", false);
-            Database db = null;
 
             try {
-                db = setupForjob(getApplicationContext());
-                run(jobName, db, isManual);
+                prepAndRun(jobName, isManual);
             } catch (Exception ex) {
                 ex.printStackTrace(System.err);
-                db.appendLog("Failed to run background job.", jobName, Map.of("error", ex.toString()));
                 return ListenableWorker.Result.failure();
-            } finally {
-                db.close();
             }
 
             return ListenableWorker.Result.success();
         }
 
-        private void run(String jobName, Database db, boolean isManual) {
+        private void prepAndRun(String jobName, boolean isManual) {
+            Database db = setupForjob(getApplicationContext());
+
             SyncJob job = db.getJob(jobName);
             if (job == null) {
                 return;
             }
 
+            try {
+                run(job, db, isManual);
+            } catch (Exception ex) {
+                db.appendLog("Failed to run background job.", job.getName(), Map.of("error", ex.toString()));
+                throw ex;
+            } finally {
+                db.close();
+            }
+
+            // Schedule the next run, making sure to append it to the uniqie work chain (since this task is still ongoing).
+            if (!isManual) {
+                schedule(job, getApplicationContext(), true, false);
+            }
+        }
+
+        private void run(SyncJob job, Database db, boolean isManual) {
             // Check if this job is still active.
             if (!isManual && !job.getActive()) {
-                db.appendLog("Job is no longer active, skipping run and not rescheduling.", jobName);
+                db.appendLog("Job is no longer active, skipping run and not rescheduling.", job.getName());
                 return;
             }
 
@@ -510,21 +533,19 @@ public class FileSyncPlugin extends CordovaPlugin {
                 jobLabel = "Manual";
             }
 
-            // Run the job.
-            try {
-                db.appendLog(String.format("%s sync started.", jobLabel), jobName);
-                Sync.SyncResult result = job.runNow();
-                db.appendLog(String.format("%s sync completed successfully.", jobLabel), jobName, result.toMap());
-            } catch (Exception ex) {
-                ex.printStackTrace(System.err);
-                db.appendLog(String.format("%s job run failed.", jobLabel), jobName, Map.of("error", ex.toString()));
+            if (!isManual && !networkUsable(getApplicationContext())) {
+                db.appendLog("Network is not suitable, skipping.", job.getName());
+                return;
             }
 
-            // TODO - If the job is stopped, we may not reschedule.
-
-            // Schedule the next run, making sure to append it to the uniqie work chain (since this task is still ongoing).
-            if (!isManual) {
-                schedule(job, getApplicationContext(), true, false);
+            // Run the job.
+            try {
+                db.appendLog(String.format("%s sync started.", jobLabel), job.getName());
+                Sync.SyncResult result = job.runNow();
+                db.appendLog(String.format("%s sync completed successfully.", jobLabel), job.getName(), result.toMap());
+            } catch (Exception ex) {
+                ex.printStackTrace(System.err);
+                db.appendLog(String.format("%s job run failed.", jobLabel), job.getName(), Map.of("error", ex.toString()));
             }
         }
     }
